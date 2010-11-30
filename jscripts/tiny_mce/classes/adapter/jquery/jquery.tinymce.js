@@ -80,7 +80,7 @@
 			base = url.substring(0, url.lastIndexOf("/"));
 
 			// Check if it's a dev/src version they want to load then
-			// make sure that all plugins, themes etc are loaded in source mode aswell
+			// make sure that all plugins, themes etc are loaded in source mode as well
 			if (/_(src|dev)\.js/g.test(url))
 				suffix = "_src";
 
@@ -91,7 +91,7 @@
 
 			// Setup tinyMCEPreInit object this will later be used by the TinyMCE
 			// core script to locate other resources like CSS files, dialogs etc
-			// You can also predefined a tinyMCEPreInit object and then it will use that instead
+			// You can also predefine a tinyMCEPreInit object and then it will use that instead
 			win.tinyMCEPreInit = win.tinyMCEPreInit || {
 				base : base,
 				suffix : suffix,
@@ -260,7 +260,7 @@
 				} else {
 					var ret = "";
 					var args = arguments;
-					
+
 					(textProc ? self : self.eq(0)).each(function(i, node) {
 						var ed = tinyMCEInstance(node);
 

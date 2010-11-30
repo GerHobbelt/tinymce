@@ -44,7 +44,7 @@
 				// Update/retrive _mce_ attribute variants
 				if (attrRegExp.test(name)) {
 					if (value !== undefined) {
-						// Use TinyMCE behavior when setting the specifc attributes
+						// Use TinyMCE behavior when setting the specific attributes
 						self.each(function(i, node) {
 							editor.dom.setAttrib(node, name, value);
 						});
