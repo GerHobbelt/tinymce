@@ -330,7 +330,7 @@
 										startCell.removeChild(node);
 								});
 							}
-							
+
 							// Remove cell
 							dom.remove(cell);
 						}
