@@ -147,6 +147,12 @@
 		<yuicompress infile="${build_dir}/themes/simple/editor_template_src.js" outfile="${build_dir}/themes/simple/editor_template.js" />
 		<yuicompress infile="${build_dir}/themes/advanced/editor_template_src.js" outfile="${build_dir}/themes/advanced/editor_template.js" />
 
+
+		<!-- spellchecker plugin: replace backend with php -->
+		<replaceregexp match="\&quot;\{backend\}\&quot;" replace="this.url+'/rpc.php'" byline="true">
+			<fileset dir="${build_dir}/plugins/spellchecker/" includes="*/editor_plugin_src.js" />
+		</replaceregexp>
+
 		<!-- Compress plugins -->
 		<for param="file">
 			<path>
