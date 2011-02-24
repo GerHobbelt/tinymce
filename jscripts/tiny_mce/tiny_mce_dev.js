@@ -45,13 +45,48 @@
 		scripts.push(base + '/classes/' + u);
 	};
 
-	function load() {
-		var i, html = '';
+	/*
+	[i_a] everywhere where we use tinyMCE, we employ lazyload.js to do the loading in a controlled fashion for us.
 
-		for (i = 0; i < scripts.length; i++)
-			html += '<script type="text/javascript" src="' + scripts[i] + '"></script>\n';
+	However, keep the old load code in there as a fallback, for now...
+	*/
+	function load()
+	{
+		// Assuming the LazyLoad object to exist, we can pass it on to LazyLoad as the callback method to be used
+		//
+		// See also:
+		//    http://stackoverflow.com/questions/359788/javascript-function-name-as-a-string
 
-		document.write(html);
+		var fn = query.load_callback;
+		//alert('fn = ' + fn);
+		var context = window;
+		if (fn)
+		{
+			//var args = Array.prototype.slice.call(query.load_args).splice(2);
+			var args;
+			var namespaces = fn.split('.');
+			fn = namespaces.pop();
+			for(var i = 0; i < namespaces.length; i++)
+			{
+				context = context[namespaces[i]];
+			}
+		}
+		if (LazyLoad)
+		{
+			LazyLoad.js(scripts, context[fn], null, null /* context */, true); // insert scripts into the load queue instead of appending them!
+		}
+		else
+		{
+			alert("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
+
+			// old code doesn't support callback!
+			var i, html = '';
+
+			for (i = 0; i < scripts.length; i++)
+				html += '<script type="text/javascript" src="' + scripts[i] + '"></script>\n';
+
+			document.write(html);
+		}
 	};
 
 	// Firebug
@@ -98,6 +133,7 @@
 	include('dom/RangeUtils.js');
 
 	// tinymce.ui.*
+	include('ui/KeyboardNavigation.js');
 	include('ui/Control.js');
 	include('ui/Container.js');
 	include('ui/Separator.js');
@@ -110,6 +146,7 @@
 	include('ui/MenuButton.js');
 	include('ui/SplitButton.js');
 	include('ui/ColorSplitButton.js');
+	include('ui/ToolbarGroup.js');
 	include('ui/Toolbar.js');
 
 	// tinymce.*
