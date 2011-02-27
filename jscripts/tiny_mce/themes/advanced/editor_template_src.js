@@ -56,8 +56,6 @@
 			newdocument : ['newdocument_desc', 'mceNewDocument'],
 			blockquote : ['blockquote_desc', 'mceBlockQuote'],
 			q : ['q_desc', 'mceQ']
-
-
 		},
 
 		stateControls : ['bold', 'italic', 'underline', 'strikethrough', 'bullist', 'numlist', 'justifyleft', 'justifycenter', 'justifyright', 'justifyfull', 'sub', 'sup', 'blockquote', 'q'],

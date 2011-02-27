@@ -22,7 +22,7 @@
 					plugin_url : url
 				});
 			});
-			
+
 			ed.addCommand('mceQ', function() {
 				ed.windowManager.open({
 					file : url + '/quote.html',
