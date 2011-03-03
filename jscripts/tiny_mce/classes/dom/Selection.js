@@ -475,9 +475,20 @@
 							for (node = root, i = point.length - 1; i >= 1; i--) {
 								children = node.childNodes;
 
-								if (children.length)
+								if (children.length) {
 									node = children[point[i]];
+
+									// Node position not found
+									if (!node)
+										return;
+								}
 							}
+
+							// Text index not found
+							if (node.nodeType === 3 && point[0] > node.nodeValue.length - 1)
+								return;
+							else if (node.nodeType === 1 && point[0] > node.childNodes.length)
+								return;
 
 							// Set offset within container node
 							if (start)
@@ -485,12 +496,13 @@
 							else
 								rng.setEnd(node, point[0]);
 						}
+
+						return true;
 					};
 
-					setEndPoint(true);
-					setEndPoint();
-
-					t.setRng(rng);
+					if (setEndPoint(true) && setEndPoint()) {
+						t.setRng(rng);
+					}
 				} else if (bookmark.id) {
 					function restoreEndPoint(suffix) {
 						var marker = dom.get(bookmark.id + '_' + suffix), node, idx, next, prev, keep = bookmark.keep;
@@ -800,25 +812,25 @@
 		getNode : function() {
 			var t = this, rng = t.getRng(), sel = t.getSel(), elm, start = rng.startContainer, end = rng.endContainer;
 
+			// Range maybe lost after the editor is made visible again
+			if (!rng)
+				return t.dom.getRoot();
+
 			if (rng.setStart) {
-				// Range maybe lost after the editor is made visible again
-				if (!rng)
-					return t.dom.getRoot();
-				
 				elm = rng.commonAncestorContainer;
 
 				// Handle selection a image or other control like element such as anchors
 				if (!rng.collapsed) {
 					if (rng.startContainer == rng.endContainer) {
-						if (rng.startOffset - rng.endOffset < 2) {
+						if (rng.endOffset - rng.startOffset < 2) {
 							if (rng.startContainer.hasChildNodes())
 								elm = rng.startContainer.childNodes[rng.startOffset];
 						}
 					}
 
 					// If the anchor node is a element instead of a text node then return this element
-					if (tinymce.isWebKit && sel.anchorNode && sel.anchorNode.nodeType == 1) 
-						return sel.anchorNode.childNodes[sel.anchorOffset];
+					//if (tinymce.isWebKit && sel.anchorNode && sel.anchorNode.nodeType == 1) 
+					//	return sel.anchorNode.childNodes[sel.anchorOffset];
 
 					// Handle cases where the selection is immediately wrapped around a node and return that node instead of it's parent.
 					// This happens when you double click an underlined word in FireFox.

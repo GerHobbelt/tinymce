@@ -1300,6 +1300,26 @@
 			 */
 			t.parser = new tinymce.html.DomParser(s, t.schema);
 
+			// Force anchor names closed
+			t.parser.addAttributeFilter('name', function(nodes, name) {
+				var i = nodes.length, sibling, prevSibling, parent, node;
+
+				while (i--) {
+					node = nodes[i];
+					if (node.name === 'a' && node.firstChild) {
+						parent = node.parent;
+
+						// Move children after current node
+						sibling = node.lastChild;
+						do {
+							prevSibling = sibling.prev;
+							parent.insert(sibling, node);
+							sibling = prevSibling;
+						} while (sibling);
+					}
+				}
+			});
+
 			// Convert src and href into data-mce-src, data-mce-href and data-mce-style
 			t.parser.addAttributeFilter('src,href,style', function(nodes, name) {
 				var i = nodes.length, node, dom = t.dom, value;
@@ -1385,18 +1405,18 @@
 			t.formatter.register({
 				alignleft : [
 					{selector : 'p,h1,h2,h3,h4,h5,h6,td,th,div,ul,ol,li', styles : {textAlign : 'left'}},
-					{selector : 'img,table', styles : {'float' : 'left'}}
+					{selector : 'img,table', collapsed : false, styles : {'float' : 'left'}}
 				],
 
 				aligncenter : [
 					{selector : 'p,h1,h2,h3,h4,h5,h6,td,th,div,ul,ol,li', styles : {textAlign : 'center'}},
-					{selector : 'img', styles : {display : 'block', marginLeft : 'auto', marginRight : 'auto'}},
-					{selector : 'table', styles : {marginLeft : 'auto', marginRight : 'auto'}}
+					{selector : 'img', collapsed : false, styles : {display : 'block', marginLeft : 'auto', marginRight : 'auto'}},
+					{selector : 'table', collapsed : false, styles : {marginLeft : 'auto', marginRight : 'auto'}}
 				],
 
 				alignright : [
 					{selector : 'p,h1,h2,h3,h4,h5,h6,td,th,div,ul,ol,li', styles : {textAlign : 'right'}},
-					{selector : 'img,table', styles : {'float' : 'right'}}
+					{selector : 'img,table', collapsed : false, styles : {'float' : 'right'}}
 				],
 
 				alignfull : [
