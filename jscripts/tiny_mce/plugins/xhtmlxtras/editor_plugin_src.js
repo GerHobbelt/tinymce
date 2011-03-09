@@ -22,10 +22,10 @@
 					plugin_url : url
 				});
 			});
-			
+
 			ed.addCommand('mceQ', function() {
 				ed.windowManager.open({
-					file : url + '/quote.html',
+					file : url + '/quote.htm',
 					width : 350 + parseInt(ed.getLang('xhtmlxtras.q_delta_width', 0)),
 					height : 250 + parseInt(ed.getLang('xhtmlxtras.q_delta_height', 0)),
 					inline : 1
