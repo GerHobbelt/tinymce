@@ -22,7 +22,17 @@
 .o2k7Skin table.mceLayout tr.mceLast td {border-bottom:1px solid #ABC6DD}
 .o2k7Skin table.mceToolbar, .o2k7Skin tr.mceFirst .mceToolbar tr td, .o2k7Skin tr.mceLast .mceToolbar tr td {border:0; margin:0; padding:0;}
 .o2k7Skin td.mceToolbar { padding-top:1px; vertical-align:top}
-.o2k7Skin .mceIframeContainer {border-top:1px solid #ABC6DD; border-bottom:1px solid #ABC6DD}
+.o2k7Skin .mceIframeContainer 
+{
+	border-top:1px solid #ABC6DD; 
+	border-bottom:1px solid #ABC6DD;
+	height: 99%;  /* [i_a] always have this TD fill up the height of the editor table. This will provide the space for the iframe, which we fill in there @ 100% */
+}
+.mceIframeContainer iframe
+{
+	width: 100%;
+	height: 100%;  /* [i_a] always have this fill the <TD> completely */
+}
 .o2k7Skin .mceStatusbar {display:block; font-family:'MS Sans Serif',sans-serif,Verdana,Arial; font-size:9pt; line-height:16px; overflow:visible; color:#000; height:20px}
 .o2k7Skin .mceStatusbar div {float:left; margin:2px}
 .o2k7Skin .mceStatusbar a.mceResize {display:block; float:right; background:url(../../img/icons.gif) -800px 0; width:20px; height:20px; cursor:se-resize; outline:0}
