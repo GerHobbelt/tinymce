@@ -1201,7 +1201,7 @@
 			// TODO: ACC add the appropriate description on this.
 			n = DOM.add(o.iframeContainer, 'iframe', {
 				id : t.id + "_ifr",
-				src : u || 'javascript:""', // Workaround for HTTPS warning in IE6/7
+				src : u || "javascript:''", // Workaround for HTTPS warning in IE6/7
 				frameBorder : '0',
 				title : s.aria_label,
 				style : {
