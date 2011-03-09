@@ -71,7 +71,7 @@
 				context = context[namespaces[i]];
 			}
 		}
-		if (LazyLoad)
+		if (typeof LazyLoad != 'undefined')
 		{
 			LazyLoad.js(scripts, context[fn], null, null /* context */, true); // insert scripts into the load queue instead of appending them!
 		}
