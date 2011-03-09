@@ -77,7 +77,7 @@
 		}
 		else
 		{
-			alert("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
+			if (console && console.log) console.log("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
 
 			// old code doesn't support callback!
 			var i, html = '';

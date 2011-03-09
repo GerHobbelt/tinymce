@@ -45,9 +45,9 @@
 				if (myHeight > t.autoresize_min_height)
 					resizeHeight = myHeight;
 				// don't allow the editor to be larger than the specified maximum height, if any
-				//alert('heights: ' + t.autoresize_min_height + ', ' + maxHeight + ', ' + resizeHeight);
 				if (maxHeight >= t.autoresize_min_height && resizeHeight > maxHeight)
 					resizeHeight = maxHeight;
+				if (console && console.log) console.log('heights: ' + t.autoresize_min_height + ', ' + maxHeight + ', ' + myHeight + ', ' + resizeHeight);
 
 				// Resize content element
 				DOM.setStyle(DOM.get(ed.id + '_ifr'), 'height', resizeHeight + 'px');
