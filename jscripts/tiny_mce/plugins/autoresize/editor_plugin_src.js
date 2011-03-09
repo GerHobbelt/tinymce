@@ -80,8 +80,8 @@
 					ed.setProgressState(true);
 					t.throbbing = true;
 
-					// Hide scrollbars
-					ed.getBody().style.overflowY = "hidden";
+					// Hide scrollbars, when applicable (resizing is possibly limited to a certain maximum height)
+					ed.getBody().style.overflowY = "auto";
 				});
 
 				ed.onLoadContent.add(function(ed, l) {
