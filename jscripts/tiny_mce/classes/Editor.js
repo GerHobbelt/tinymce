@@ -2636,6 +2636,14 @@
 
 				if (e)
 					t.contentWindow = e.contentWindow;
+				// [i_a] on very odd occasions a JS crash happens in FF3 due to getDoc not getting a window from this one, or some other screwup
+				//
+				// HINT: this happens after toggling the fullscreen mode: seems this failure occurs when the editor is BACK TO NORMAL after
+				//       a fullscreen, however the ID pointed at is still mce_fullscreen instead of, for example, 'editor' or 'content' (the textarea ID)
+				//       and since this fullscreen ID is long gone, everything is DIW.
+				if (!t.contentWindow) {
+					//debugger; // comment out before compressing with yui tools: that one crashes on 'reserved word'.
+				}
 			}
 
 			return t.contentWindow;
@@ -2653,8 +2661,13 @@
 			if (!t.contentDocument) {
 				w = t.getWin();
 
-				if (w)
+				if (w) {
 					t.contentDocument = w.document;
+				}
+				// [i_a] on very odd occasions a JS crash happens in FF3 due to this function returning 'null' -- while it shouldn't...
+				if (!t.contentDocument) {
+					//debugger; // comment out before compressing with yui tools: that one crashes on 'reserved word'.
+				}
 			}
 
 			return t.contentDocument;
