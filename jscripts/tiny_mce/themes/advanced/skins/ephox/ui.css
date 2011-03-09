@@ -218,6 +218,9 @@
 .ephoxSkin span.mce_pagebreak {background-position:0 -40px}
 .ephoxSkin span.mce_restoredraft {background-position:-20px -40px}
 .ephoxSkin span.mce_spellchecker {background-position:-540px -20px}
+
+
+
 /* Black */
 .ephoxSkin .mceToolbar .mceToolbarStart span, .ephoxSkin .mceToolbar .mceToolbarEnd span, .ephoxSkin .mceButton, .ephoxSkin .mceSplitButton, .ephoxSkin .mceSeparator, .ephoxSkin .mceSplitButton a.mceOpen, .ephoxSkin .mceListBox a.mceOpen {
 	background-image:url(img/button_bg.png);
