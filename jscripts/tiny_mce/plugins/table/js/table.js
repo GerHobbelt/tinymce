@@ -210,20 +210,20 @@ function insertTable() {
 		var patt = '';
 
 		inst.focus();
-		inst.selection.setContent('<br class="_mce_marker" />');
+		inst.selection.setContent('<br class="data-mce-marker" />');
 
 		tinymce.each('h1,h2,h3,h4,h5,h6,p'.split(','), function(n) {
 			if (patt)
 				patt += ',';
 
-			patt += n + ' ._mce_marker';
+			patt += n + ' .data-mce-marker';
 		});
 
 		tinymce.each(inst.dom.select(patt), function(n) {
 			inst.dom.split(inst.dom.getParent(n, 'h1,h2,h3,h4,h5,h6,p'), n);
 		});
 
-		dom.setOuterHTML(dom.select('br._mce_marker')[0], html);
+		dom.setOuterHTML(dom.select('br.data-mce-marker')[0], html);
 	} else
 		inst.execCommand('mceInsertContent', false, html);
 
