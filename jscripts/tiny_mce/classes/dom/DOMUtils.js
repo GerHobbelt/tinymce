@@ -311,7 +311,7 @@
 		 * @example
 		 * // Adds a class to all paragraphs in the currently active editor
 		 * tinyMCE.activeEditor.dom.addClass(tinyMCE.activeEditor.dom.select('p'), 'someclass');
-		 * 
+		 *
 		 * // Adds a class to all spans that has the test class in the currently active editor
 		 * tinyMCE.activeEditor.dom.addClass(tinyMCE.activeEditor.dom.select('span.test'), 'someclass')
 		 */
@@ -446,7 +446,7 @@
 		 * @example
 		 * // Removes all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.remove(tinyMCE.activeEditor.dom.select('p'));
-		 * 
+		 *
 		 * // Removes a element by id in the document
 		 * tinyMCE.DOM.remove('mydiv');
 		 */
@@ -484,7 +484,7 @@
 		 * @example
 		 * // Sets a style value on all paragraphs in the currently active editor
 		 * tinyMCE.activeEditor.dom.setStyle(tinyMCE.activeEditor.dom.select('p'), 'background-color', 'red');
-		 * 
+		 *
 		 * // Sets a style value to an element by id in the current document
 		 * tinyMCE.DOM.setStyle('mydiv', 'background-color', 'red');
 		 */
@@ -522,7 +522,7 @@
 					case 'float':
 						isIE ? s.styleFloat = v : s.cssFloat = v;
 						break;
-					
+
 					default:
 						s[na] = v || '';
 				}
@@ -587,7 +587,7 @@
 		 * @example
 		 * // Sets styles on all paragraphs in the currently active editor
 		 * tinyMCE.activeEditor.dom.setStyles(tinyMCE.activeEditor.dom.select('p'), {'background-color' : 'red', 'color' : 'green'});
-		 * 
+		 *
 		 * // Sets styles to an element by id in the current document
 		 * tinyMCE.DOM.setStyles('mydiv', {'background-color' : 'red', 'color' : 'green'});
 		 */
@@ -609,7 +609,7 @@
 
 		/**
 		 * Removes all attributes from an element or elements.
-		 * 
+		 *
 		 * @param {Element/String/Array} e DOM element, element id string or array of elements/ids to remove attributes from.
 		 */
 		removeAllAttribs: function(e) {
@@ -631,7 +631,7 @@
 		 * @example
 		 * // Sets an attribute to all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.setAttrib(tinyMCE.activeEditor.dom.select('p'), 'class', 'myclass');
-		 * 
+		 *
 		 * // Sets an attribute to a specific element in the current page
 		 * tinyMCE.dom.setAttrib('mydiv', 'class', 'myclass');
 		 */
@@ -684,7 +684,7 @@
 						}
 
 						break;
-					
+
 					case "shape":
 						e.setAttribute('data-mce-style', v);
 						break;
@@ -706,7 +706,7 @@
 		 * @example
 		 * // Sets some attributes to all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.setAttribs(tinyMCE.activeEditor.dom.select('p'), {'class' : 'myclass', title : 'some title'});
-		 * 
+		 *
 		 * // Sets some attributes to a specific element in the current page
 		 * tinyMCE.DOM.setAttribs('mydiv', {'class' : 'myclass', title : 'some title'});
 		 */
@@ -926,13 +926,13 @@
 		 * @example
 		 * // Loads a CSS file dynamically into the current document
 		 * tinymce.DOM.loadCSS('somepath/some.css');
-		 * 
+		 *
 		 * // Loads a CSS file into the currently active editor instance
 		 * tinyMCE.activeEditor.dom.loadCSS('somepath/some.css');
-		 * 
+		 *
 		 * // Loads a CSS file into an editor instance by id
 		 * tinyMCE.get('someid').dom.loadCSS('somepath/some.css');
-		 * 
+		 *
 		 * // Loads multiple CSS files into the current document
 		 * tinymce.DOM.loadCSS('somepath/some.css,somepath/someother.css');
 		 */
@@ -979,7 +979,7 @@
 		 * @example
 		 * // Adds a class to all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.addClass(tinyMCE.activeEditor.dom.select('p'), 'myclass');
-		 * 
+		 *
 		 * // Adds a class to a specific element in the current page
 		 * tinyMCE.DOM.addClass('mydiv', 'myclass');
 		 */
@@ -1009,7 +1009,7 @@
 		 * @example
 		 * // Removes a class from all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.removeClass(tinyMCE.activeEditor.dom.select('p'), 'myclass');
-		 * 
+		 *
 		 * // Removes a class from a specific element in the current page
 		 * tinyMCE.DOM.removeClass('mydiv', 'myclass');
 		 */
@@ -1116,7 +1116,7 @@
 		 * @example
 		 * // Sets the inner HTML of all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.setHTML(tinyMCE.activeEditor.dom.select('p'), 'some inner html');
-		 * 
+		 *
 		 * // Sets the inner HTML of a element by id in the document
 		 * tinyMCE.DOM.setHTML('mydiv', 'some inner html');
 		 */
@@ -1193,7 +1193,7 @@
 		 * @example
 		 * // Sets the outer HTML of all paragraphs in the active editor
 		 * tinyMCE.activeEditor.dom.setOuterHTML(tinyMCE.activeEditor.dom.select('p'), '<div>some html</div>');
-		 * 
+		 *
 		 * // Sets the outer HTML of a element by id in the document
 		 * tinyMCE.DOM.setOuterHTML('mydiv', '<div>some html</div>');
 		 */
@@ -1263,7 +1263,7 @@
 		 * @method insertAfter
 		 * @param {Element} node Element to insert after the reference.
 		 * @param {Element/String/Array} reference_node Reference element, element id or array of elements to insert after.
-		 * @return {Element/Array} Element that got added or an array with elements. 
+		 * @return {Element/Array} Element that got added or an array with elements.
 		 */
 		insertAfter : function(node, reference_node) {
 			reference_node = this.get(reference_node);
@@ -1591,7 +1591,7 @@
 		 * @return {Number} Index of the specified node.
 		 */
 		nodeIndex : function(node, normalized) {
-			var idx = 0, lastNodeType, lastNode, nodeType;
+			var idx = 0, lastNodeType, lastNode, nodeType, nodeValueExists;
 
 			if (node) {
 				for (lastNodeType = node.nodeType, node = node.previousSibling, lastNode = node; node; node = node.previousSibling) {
@@ -1599,10 +1599,13 @@
 
 					// Normalize text nodes
 					if (normalized && nodeType == 3) {
-						if (nodeType == lastNodeType || !node.nodeValue.length)
+						// ensure that text nodes that have been removed are handled correctly in Internet Explorer.
+						// (the nodeValue attribute will not exist, and will error here).
+						nodeValueExists = false;
+						try {nodeValueExists = node.nodeValue.length} catch (c) {}
+						if (nodeType == lastNodeType || !nodeValueExists)
 							continue;
 					}
-
 					idx++;
 					lastNodeType = nodeType;
 				}
@@ -1614,7 +1617,7 @@
 		/**
 		 * Splits an element into two new elements and places the specified split
 		 * element or element between the new ones. For example splitting the paragraph at the bold element in
-		 * this example <p>abc<b>abc</b>123</p> would produce <p>abc</p><b>abc</b><p>123</p>. 
+		 * this example <p>abc<b>abc</b>123</p> would produce <p>abc</p><b>abc</b><p>123</p>.
 		 *
 		 * @method split
 		 * @param {Element} pe Parent element to split.
