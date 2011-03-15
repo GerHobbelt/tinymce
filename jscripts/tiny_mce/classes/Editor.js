@@ -3138,6 +3138,10 @@
 						addUndo();
 				});
 
+				t.dom.bind(t.dom.getRoot(), 'dragend', function(e) {
+					addUndo();
+				});
+
 				t.onKeyUp.add(function(ed, e) {
 					var rng, parent, bookmark;
 
@@ -3167,6 +3171,7 @@
 						rng = t.selection.getRng();
 
 						if (rng.parentElement) {
+							addUndo();
 							parent = rng.parentElement();
 
 							if (!t.undoManager.typing) {
@@ -3198,14 +3203,22 @@
 								t.selection.moveToBookmark(bookmark);
 							}
 
+							addUndo();
+
 							// Block the default delete behavior since it might be broken
 							e.preventDefault();
 							return;
 						}
 					}
 
+					// Special handling for enter to ensure typing is still set to true
+					if (e.keyCode == 13 && t.undoManager.typing) {
+						addUndo();
+						t.undoManager.typing = true;
+					}
+
 					// Is caracter positon keys
-					if ((e.keyCode >= 33 && e.keyCode <= 36) || (e.keyCode >= 37 && e.keyCode <= 40) || e.keyCode == 13 || e.keyCode == 45) {
+					if ((e.keyCode >= 33 && e.keyCode <= 36) || (e.keyCode >= 37 && e.keyCode <= 40) || e.keyCode == 45) {
 						if (t.undoManager.typing)
 							addUndo();
 
