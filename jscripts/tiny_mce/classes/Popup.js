@@ -317,7 +317,7 @@ tinyMCEPopup = {
 	_onDOMLoaded : function() {
 		var t = tinyMCEPopup, ti = document.title, bm, h, nv;
 
-		if (console && console.log) console.log('tinyMCEPopup._onDOMloaded() domloaded: ' + (1*t.domLoaded));
+		if (typeof console !== 'undefined' && console.log) console.log('tinyMCEPopup._onDOMloaded() domloaded: ' + (1*t.domLoaded));
 		if (t.domLoaded)
 			return;
 
@@ -419,7 +419,7 @@ tinyMCEPopup = {
 
 	_wait : function() {
 		// Use IE method
-		if (console && console.log) console.log('tinymcePopup:register onreadystatechange: ' + (1*tinyMCEPopup.domLoaded));
+		if (typeof console !== 'undefined' && console.log) console.log('tinymcePopup:register onreadystatechange: ' + (1*tinyMCEPopup.domLoaded));
 		if (document.attachEvent) {
 			document.attachEvent("onreadystatechange", function() {
 				if (document.readyState === "complete") {
@@ -430,7 +430,7 @@ tinyMCEPopup = {
 
 			if (document.documentElement.doScroll && window == window.top) {
 				(function() {
-					if (console && console.log) console.log('tinyMCEPopup._wait(win = top) domloaded: ' + (1*tinyMCEPopup.domLoaded));
+					if (typeof console !== 'undefined' && console.log) console.log('tinyMCEPopup._wait(win = top) domloaded: ' + (1*tinyMCEPopup.domLoaded));
 					if (tinyMCEPopup.domLoaded)
 						return;
 

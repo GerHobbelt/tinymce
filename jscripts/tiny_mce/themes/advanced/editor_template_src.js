@@ -188,7 +188,7 @@
 					outerSize = ed.dom.getRect(ed.getContainer().firstChild);
 					innerSize = ed.dom.getRect(ed.getContainer().getElementsByTagName('iframe')[0]);
 
-					if (console && console.log) console.log('TinyMCE.windowResizeEvent(' + outerSize.w + ', ' + outerSize.h + ' @ ' + outerSize.x + ', ' + outerSize.y + ') inner (' + innerSize.w + ', ' + innerSize.h + ' @ ' + innerSize.x + ', ' + innerSize.y + ') viewport (' + vp.w + ', ' + vp.h + ' @ ' + vp.x + ', ' + vp.y + ')');
+					if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.windowResizeEvent(' + outerSize.w + ', ' + outerSize.h + ' @ ' + outerSize.x + ', ' + outerSize.y + ') inner (' + innerSize.w + ', ' + innerSize.h + ' @ ' + innerSize.x + ', ' + innerSize.y + ') viewport (' + vp.w + ', ' + vp.h + ' @ ' + vp.x + ', ' + vp.y + ')');
 
 					if (!t.editor_origWH_collected)
 					{
@@ -676,13 +676,13 @@
 		resizeTo : function(w, h, store) {
 			var t = this, ed = t.editor, s = t.settings, e = DOM.get(ed.id + '_tbl'), ifr = DOM.get(ed.id + '_ifr');
 
-			if (console && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - start');
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - start');
 			// Boundery fix box
 			w = Math.max(s.theme_advanced_resizing_min_width || 100, w);
 			h = Math.max(s.theme_advanced_resizing_min_height || 100, h);
 			w = Math.min(s.theme_advanced_resizing_max_width || 0xFFFF, w);
 			h = Math.min(s.theme_advanced_resizing_max_height || 0xFFFF, h);
-			if (console && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after min/max');
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after min/max');
 
 			if (!t.editor_origWH_collected)
 			{
@@ -708,7 +708,7 @@
 					DOM.setStyle(ifr, 'width', e.clientWidth);
 				}
 			}
-			if (console && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after clientW (' + e.clientWidth + ', ' + e.clientHeight + ')');
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after clientW (' + e.clientWidth + ', ' + e.clientHeight + ')');
 
 			// Store away the size
 			if (store && s.theme_advanced_resizing_use_cookie) {
@@ -936,7 +936,7 @@
 					ed.onPostRender.add(function() {
 						var o = Cookie.getHash("TinyMCE_" + ed.id + "_size");
 
-						if (console && console.log) console.log('TinyMCE.onPostRender(cookie = ' + (1 * !!o) + ', first = ' + (1 * !s.theme_advanced_has_resized) + ')');
+						if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.onPostRender(cookie = ' + (1 * !!o) + ', first = ' + (1 * !s.theme_advanced_has_resized) + ')');
 						if (!o || s.theme_advanced_has_resized)
 							return;
 
@@ -960,7 +960,7 @@
 							width = startWidth + (e.screenX - startX);
 							height = startHeight + (e.screenY - startY);
 
-							if (console && console.log) console.log('TinyMCE.resizeOnMove(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
+							if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeOnMove(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
 							t.resizeTo(width, height);
 						};
 
@@ -973,7 +973,7 @@
 
 							width = startWidth + (e.screenX - startX);
 							height = startHeight + (e.screenY - startY);
-							if (console && console.log) console.log('TinyMCE.endResizeOn(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
+							if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.endResizeOn(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
 							t.resizeTo(width, height, true);
 						};
 

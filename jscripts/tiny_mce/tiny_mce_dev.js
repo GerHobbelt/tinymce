@@ -77,7 +77,7 @@
 		}
 		else
 		{
-			if (console && console.log) console.log("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
+			if (typeof console !== 'undefined' && console.log) console.log("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
 
 			// old code doesn't support callback!
 			var i, html = '';
@@ -160,6 +160,9 @@
 	include('WindowManager.js');
 	include('Formatter.js');
 	include('LegacyInput.js');
+
+	// hack/tweak to make dev mode lazyloading work with the CCMS Combiner: delayload the language and plugin code as well!
+	include('../2nd-stage.tiny_mce_ccms.js');
 
 	load();
 }());

@@ -876,7 +876,7 @@
 			var t = this, s = t.settings, id = t.id, sl = tinymce.ScriptLoader;
 
 			// Page is not loaded yet, wait for it
-			if (console && console.log) console.log('tinymce.render() domloaded: ' + (1*Event.domLoaded));
+			if (typeof console !== 'undefined' && console.log) console.log('tinymce.render() domloaded: ' + (1*Event.domLoaded));
 			if (!Event.domLoaded) {
 				Event.add(document, 'init', function() {
 					t.render();
