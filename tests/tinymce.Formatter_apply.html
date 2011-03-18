@@ -701,6 +701,9 @@ test('apply (mixed inline/selector)', function() {
 
 test('Formatter - Bold and italics is applied to text that is not highlighted', function() {
 	var rng;
+
+	//expect(1);
+
 	editor.setContent('<p><span style="font-family: Arial;"><strong>test1 test2</strong> test3 test4 test5 test6</span></p>');
 	rng = editor.dom.createRng();
 	rng.setStart(editor.dom.select('strong')[0].firstChild, 6);

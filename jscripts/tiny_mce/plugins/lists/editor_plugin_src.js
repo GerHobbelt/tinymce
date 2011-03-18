@@ -273,7 +273,7 @@
 					n = tmp;
 				}
 				if (li.childNodes.length === 0) {
-					li.innerHTML = '<br _mce_bogus="1" />';
+					li.innerHTML = '<br data-mce-bogus="1" />';
 				}
 				makeList(li);
 			}
@@ -306,11 +306,11 @@
 				var trailingContentSelected = false;
 				each(dom.select(breakElements, element), function(br) {
 					var b;
-					if (br.hasAttribute && br.hasAttribute('_mce_bogus')) {
+					if (br.hasAttribute && br.hasAttribute('data-mce-bogus')) {
 						return true; // Skip the bogus Brs that are put in to appease Firefox and Safari.
 					}
 					if (isAnyPartSelected(startSection, br)) {
-						dom.addClass(br, '_mce_tagged_br');
+						dom.addClass(br, 'data-mce-tagged-br');
 						startSection = nextLeaf(br);
 					}
 				});
@@ -319,10 +319,10 @@
 				each(dom.select(breakElements, element), function(br) {
 					// Got a section from start to br.
 					var tmp = nextLeaf(br);
-					if (br.hasAttribute && br.hasAttribute('_mce_bogus')) {
+					if (br.hasAttribute && br.hasAttribute('data-mce-bogus')) {
 						return true; // Skip the bogus Brs that are put in to appease Firefox and Safari.
 					}
-					if (dom.hasClass(br, '_mce_tagged_br')) {
+					if (dom.hasClass(br, 'data-mce-tagged-br')) {
 						callback(startSection, br, previousBR);
 						previousBR = null;
 					} else {
@@ -508,7 +508,7 @@
 		process: function(actions) {
 			var t = this, sel = t.ed.selection, dom = t.ed.dom, selectedBlocks, r;
 			function processElement(element) {
-				dom.removeClass(element, '_mce_act_on');
+				dom.removeClass(element, 'data-mce-act-on');
 				if (!element || element.nodeType !== 1) {
 					return;
 				}
@@ -564,14 +564,14 @@
 			var dom = this.ed.dom, nodes, element;
 			// Mark nodes
 			each(elements, function(element) {
-				dom.addClass(element, '_mce_act_on');
+				dom.addClass(element, 'data-mce-act-on');
 			});
-			nodes = dom.select('._mce_act_on');
+			nodes = dom.select('.data-mce-act-on');
 			while (nodes.length > 0) {
 				element = nodes.shift();
-				dom.removeClass(element, '_mce_act_on');
+				dom.removeClass(element, 'data-mce-act-on');
 				f(element);
-				nodes = dom.select('._mce_act_on');
+				nodes = dom.select('.data-mce-act-on');
 			}
 		},
 		
