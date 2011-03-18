@@ -12,7 +12,6 @@
 	var each = tinymce.each,
 		defs = {
 			paste_auto_cleanup_on_paste : true,
-			paste_enable_default_filters : true,
 			paste_block_drop : false,
 			paste_retain_style_properties : "none",
 			paste_strip_class_attributes : "mso",
@@ -61,6 +60,12 @@
 			// Register optional postprocess
 			t.onPostProcess.add(function(pl, o) {
 				ed.execCallback('paste_postprocess', pl, o);
+			});
+
+			ed.onKeyDown.addToTop(function(ed, e) {
+				// Block ctrl+v from adding an undo level since the default logic in tinymce.Editor will add that
+				if (((tinymce.isMac ? e.metaKey : e.ctrlKey) && e.keyCode == 86) || (e.shiftKey && e.keyCode == 45))
+					return false; // Stop other listeners
 			});
 
 			// Initialize plain text flag
@@ -193,8 +198,13 @@
 						return;
 					}
 
-					// Process contents
-					process({content : n.innerHTML});
+					// For some odd reason we need to detach the the mceInsertContent call from the paste event
+					// It's like IE has a reference to the parent element that you paste in and the selection gets messed up
+					// when it tries to restore the selection
+					setTimeout(function() {
+						// Process contents
+						process({content : n.innerHTML});
+					}, 0);
 
 					// Block the real paste event
 					return tinymce.dom.Event.cancel(e);
@@ -274,7 +284,7 @@
 			if (getParam(ed, "paste_auto_cleanup_on_paste")) {
 				// Is it's Opera or older FF use key handler
 				if (tinymce.isOpera || /Firefox\/2/.test(navigator.userAgent)) {
-					ed.onKeyDown.add(function(ed, e) {
+					ed.onKeyDown.addToTop(function(ed, e) {
 						if (((tinymce.isMac ? e.metaKey : e.ctrlKey) && e.keyCode == 86) || (e.shiftKey && e.keyCode == 45))
 							grabContent(e);
 					});
@@ -313,14 +323,14 @@
 		},
 
 		_preProcess : function(pl, o) {
-			//console.log('Before preprocess:' + o.content);
-
 			var ed = this.editor,
 				h = o.content,
 				grep = tinymce.grep,
 				explode = tinymce.explode,
 				trim = tinymce.trim,
 				len, stripClass;
+
+			//console.log('Before preprocess:' + o.content);
 
 			function process(items) {
 				each(items, function(v) {
@@ -332,9 +342,9 @@
 				});
 			}
 
-			if (ed.settings.paste_enable_default_filters == false) {
-				return;
-			}
+			// IE9 adds BRs before/after block elements when contents is pasted from word or for example another browser
+			if (tinymce.isIE && document.documentMode >= 9)
+				process([[/(?:<br>&nbsp;[\s\r\n]+|<br>)*(<\/?(h[1-6r]|p|div|address|pre|form|table|tbody|thead|tfoot|th|tr|td|li|ol|ul|caption|blockquote|center|dl|dt|dd|dir|fieldset)[^>]*>)(?:<br>&nbsp;[\s\r\n]+|<br>)*/g, '$1']]);
 
 			// Detect Word content and process it more aggressive
 			if (/class="?Mso|style="[^"]*\bmso-|w:WordDocument/i.test(h) || o.wordContent) {
@@ -509,8 +519,7 @@
 
 			process([
 				// Copy paste from Java like Open Office will produce this junk on FF
-				[/Version:[\d.]+\nStartHTML:\d+\nEndHTML:\d+\nStartFragment:\d+\nEndFragment:\d+/gi, ''],
-				[/^<br><br>|(<\/(?:p|h[1-6]|ol|ul|div)>)<br><br>/gi, '$1'] // IE9 adds double BR elements before/after blocks
+				[/Version:[\d.]+\nStartHTML:\d+\nEndHTML:\d+\nStartFragment:\d+\nEndFragment:\d+/gi, '']
 			]);
 
 			// Class attribute options are: leave all as-is ("none"), remove all ("all"), or remove only those starting with mso ("mso").
@@ -550,10 +559,6 @@
 		 */
 		_postProcess : function(pl, o) {
 			var t = this, ed = t.editor, dom = ed.dom, styleProps;
-
-			if (ed.settings.paste_enable_default_filters == false) {
-				return;
-			}
 
 			if (o.wordContent) {
 				// Remove named anchors or TOC links
@@ -617,30 +622,6 @@
 					});
 				}
 			}
-
-			t._fixListItems(pl, o);
-		},
-
-		/**
-		 * Detects any LI elements pasted outside of a UL or OL and fixes the nesting. This happens when copying part of a list in IE.
-		 */
-		_fixListItems : function(pl, o) {
-			var ul, i, n, dom = this.editor.dom;
-			for (i = 0; i < o.node.childNodes.length; i++) {
-				n = o.node.childNodes[i];
-
-				if (n.tagName === 'LI') {
-					if (!ul) {
-						ul = dom.create('UL');
-						n.parentNode.insertBefore(ul, n);
-						i++;
-					}
-					ul.appendChild(n);
-					i--;
-				} else {
-					ul = null;
-				}
-			}
 		},
 
 		/**
@@ -660,7 +641,7 @@
 				val = p.innerHTML.replace(/<\/?\w+[^>]*>/gi, '').replace(/&nbsp;/g, '\u00a0');
 
 				// Detect unordered lists look for bullets
-				if (/^(__MCE_ITEM__)+[\u2022\u00b7\u00a7\u00d8o\u25CF]\s*\u00a0*/.test(val))
+				if (/^(__MCE_ITEM__)+[\u2022\u00b7\u00a7\u00d8o]\s*\u00a0*/.test(val))
 					type = 'ul';
 
 				// Detect ordered lists 1., a. or ixv.
@@ -694,9 +675,9 @@
 						var html = span.innerHTML.replace(/<\/?\w+[^>]*>/gi, '');
 
 						// Remove span with the middot or the number
-						if (type == 'ul' && /^__MCE_ITEM__[\u2022\u00b7\u00a7\u00d8o\u25CF]/.test(html))
+						if (type == 'ul' && /^[\u2022\u00b7\u00a7\u00d8o]/.test(html))
 							dom.remove(span);
-						else if (/^__MCE_ITEM__[\s\S]*\w+\.(&nbsp;|\u00a0)*\s*/.test(html))
+						else if (/^[\s\S]*\w+\.(&nbsp;|\u00a0)*\s*/.test(html))
 							dom.remove(span);
 					});
 
@@ -704,7 +685,7 @@
 
 					// Remove middot/list items
 					if (type == 'ul')
-						html = p.innerHTML.replace(/__MCE_ITEM__/g, '').replace(/^[\u2022\u00b7\u00a7\u00d8o\u25CF]\s*(&nbsp;|\u00a0)+\s*/, '');
+						html = p.innerHTML.replace(/__MCE_ITEM__/g, '').replace(/^[\u2022\u00b7\u00a7\u00d8o]\s*(&nbsp;|\u00a0)+\s*/, '');
 					else
 						html = p.innerHTML.replace(/__MCE_ITEM__/g, '').replace(/^\s*\w+\.(&nbsp;|\u00a0)+\s*/, '');
 
@@ -734,7 +715,6 @@
 			if (!ed.selection.isCollapsed() && r.startContainer != r.endContainer)
 				ed.getDoc().execCommand('Delete', false, null);
 
-			// It's better to use the insertHTML method on Gecko since it will combine paragraphs correctly before inserting the contents
 			ed.execCommand('mceInsertContent', false, h, {skip_undo : skip_undo});
 		},
 

@@ -1072,6 +1072,11 @@
 			t.controlManager = new tinymce.ControlManager(t);
 
 			if (s.custom_undo_redo) {
+				t.onBeforeExecCommand.add(function(ed, cmd, ui, val, a) {
+					if (cmd != 'Undo' && cmd != 'Redo' && cmd != 'mceRepaint' && (!a || !a.skip_undo))
+						t.undoManager.beforeChange();
+				});
+
 				t.onExecCommand.add(function(ed, cmd, ui, val, a) {
 					if (cmd != 'Undo' && cmd != 'Redo' && cmd != 'mceRepaint' && (!a || !a.skip_undo))
 						t.undoManager.add();
@@ -1452,6 +1457,8 @@
 				fontsize : {inline : 'span', styles : {fontSize : '%value'}},
 				fontsize_class : {inline : 'span', attributes : {'class' : '%value'}},
 				blockquote : {block : 'blockquote', wrapper : 1, remove : 'all'},
+				subscript : {inline : 'sub'},
+				superscript : {inline : 'sup'},
 
 				removeformat : [
 					{selector : 'b,strong,em,i,font,u,strike', remove : 'all', split : true, expand : false, block_expand : true, deep : true},
@@ -1983,7 +1990,7 @@
 		 * @param {Object} o Optional object to pass along for the node changed event.
 		 */
 		nodeChanged : function(o) {
-			var t = this, s = t.selection, n = (isIE ? s.getNode() : s.getStart()) || t.getBody();
+			var t = this, s = t.selection, n = s.getStart() || t.getBody();
 
 			// Fix for bug #1896577 it seems that this can not be fired while the editor is loading
 			if (t.initialized) {
@@ -3138,10 +3145,6 @@
 						addUndo();
 				});
 
-				t.dom.bind(t.dom.getRoot(), 'dragend', function(e) {
-					addUndo();
-				});
-
 				t.onKeyUp.add(function(ed, e) {
 					var rng, parent, bookmark;
 
@@ -3161,20 +3164,20 @@
 				});
 
 				t.onKeyDown.add(function(ed, e) {
-					var rng, parent, bookmark;
+					var rng, parent, bookmark, keyCode = e.keyCode;
 
 					// IE has a really odd bug where the DOM might include an node that doesn't have
 					// a proper structure. If you try to access nodeValue it would throw an illegal value exception.
 					// This seems to only happen when you delete contents and it seems to be avoidable if you refresh the element
 					// after you delete contents from it. See: #3008923
-					if (isIE && e.keyCode == 46) {
+					if (isIE && keyCode == 46) {
 						rng = t.selection.getRng();
 
 						if (rng.parentElement) {
-							addUndo();
 							parent = rng.parentElement();
 
 							if (!t.undoManager.typing) {
+								t.undoManager.beforeChange();
 								t.undoManager.typing = true;
 								t.undoManager.add();
 							}
@@ -3203,29 +3206,23 @@
 								t.selection.moveToBookmark(bookmark);
 							}
 
-							addUndo();
-
 							// Block the default delete behavior since it might be broken
 							e.preventDefault();
 							return;
 						}
 					}
 
-					// Special handling for enter to ensure typing is still set to true
-					if (e.keyCode == 13 && t.undoManager.typing) {
-						addUndo();
-						t.undoManager.typing = true;
-					}
-
-					// Is caracter positon keys
-					if ((e.keyCode >= 33 && e.keyCode <= 36) || (e.keyCode >= 37 && e.keyCode <= 40) || e.keyCode == 45) {
+					// Is caracter positon keys left,right,up,down,home,end,pgdown,pgup,enter
+					if ((keyCode >= 33 && keyCode <= 36) || (keyCode >= 37 && keyCode <= 40) || keyCode == 13 || keyCode == 45) {
 						if (t.undoManager.typing)
 							addUndo();
 
 						return;
 					}
 
-					if (!t.undoManager.typing) {
+					// If key isn't shift,ctrl,alt,capslock,metakey
+					if ((keyCode < 16 || keyCode > 20) && keyCode != 224 && keyCode != 91 && !t.undoManager.typing) {
+						t.undoManager.beforeChange();
 						t.undoManager.add();
 						t.undoManager.typing = true;
 					}
@@ -3240,38 +3237,42 @@
 			// Bug fix for FireFox keeping styles from end of selection instead of start.
 			if (tinymce.isGecko) {
 				function getAttributeApplyFunction() {
-					t.undoManager.typing = false;
-					t.undoManager.add();
 					var template = t.dom.getAttribs(t.selection.getStart().cloneNode(false));
+
 					return function() {
 						var target = t.selection.getStart();
 						t.dom.removeAllAttribs(target);
 						each(template, function(attr) {
 							target.setAttributeNode(attr.cloneNode(true));
 						});
-						t.undoManager.typing = false;
-						t.undoManager.add();
 					};
 				}
 
 				function isSelectionAcrossElements() {
 					var s = t.selection;
+
 					return !s.isCollapsed() && s.getStart() != s.getEnd();
 				}
 
 				t.onKeyPress.add(function(ed, e) {
+					var applyAttributes;
+
 					if ((e.keyCode == 8 || e.keyCode == 46) && isSelectionAcrossElements()) {
-						var applyAttributes = getAttributeApplyFunction();
+						applyAttributes = getAttributeApplyFunction();
 						t.getDoc().execCommand('delete', false, null);
 						applyAttributes();
+
 						return Event.cancel(e);
 					}
 				});
 
 				t.dom.bind(t.getDoc(), 'cut', function(e) {
+					var applyAttributes;
+
 					if (isSelectionAcrossElements()) {
-						var applyAttributes = getAttributeApplyFunction();
+						applyAttributes = getAttributeApplyFunction();
 						t.onKeyUp.addToTop(Event.cancel, Event);
+
 						setTimeout(function() {
 							applyAttributes();
 							t.onKeyUp.remove(Event.cancel, Event);

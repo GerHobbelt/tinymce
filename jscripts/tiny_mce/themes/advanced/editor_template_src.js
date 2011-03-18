@@ -86,7 +86,6 @@
 				theme_advanced_resizing_use_cookie : 1,
 				theme_advanced_font_sizes : "1,2,3,4,5,6,7",
 				theme_advanced_font_selector : "span",
-				theme_advanced_show_current_color: 0,
 				readonly : ed.settings.readonly
 			}, ed.settings);
 
@@ -138,9 +137,6 @@
 						t._updateUndoStatus(ed);
 					});
 				}
-
-				if (ed.settings.content_css !== false)
-					ed.dom.loadCSS(ed.baseURI.toAbsolute(url + "/skins/" + ed.settings.skin + "/content.css"));
 			});
 
 			ed.onSetProgressState.add(function(ed, b, ti) {
@@ -167,7 +163,7 @@
 			if (s.skin_variant)
 				DOM.loadCSS(url + "/skins/" + ed.settings.skin + "/ui_" + s.skin_variant + ".css");
 
-			// since we want display resize actions to have effect even when the user jiggled the
+			// [i_a] since we want display resize actions to have effect even when the user jiggled the
 			// resize draggable triangle some time before, we need to hook that window(!) event and
 			// have it nuke the fixed width/height and revert to the default state: allowing the
 			// browser engine to determine the layout of the editor.
@@ -395,6 +391,10 @@
 						return v == sv;
 					});
 
+					if (cur && cur.value == v) {
+						c.select(null);
+					}
+
 					return false; // No auto select
 				}
 			});
@@ -442,6 +442,10 @@
 					return v == sv;
 				});
 
+				if (cur && (cur.value.fontSize == v.fontSize || cur.value['class'] == v['class'])) {
+					c.select(null);
+				}
+
 				return false; // No auto select
 			}});
 
@@ -479,7 +483,11 @@
 				samp : 'advanced.samp'
 			}, t = this;
 
-			c = t.editor.controlManager.createListBox('formatselect', {title : 'advanced.block', cmd : 'FormatBlock'});
+			c = t.editor.controlManager.createListBox('formatselect', {title : 'advanced.block', onselect : function(v) {
+				t.editor.execCommand('FormatBlock', false, v);
+				return false;
+			}});
+
 			if (c) {
 				each(t.editor.getParam('theme_advanced_blockformats', t.settings.theme_advanced_blockformats, 'hash'), function(v, k) {
 					c.add(t.editor.translate(k != v ? k : fmts[v]), v, {'class' : 'mce_formatPreview mce_' + v});
@@ -729,9 +737,6 @@
 			Event.clear(id + '_resize');
 			Event.clear(id + '_path_row');
 			Event.clear(id + '_external_close');
-
-			if (typeof this.editor.windowResizeFunc != 'undefined')
-				tinymce.dom.Event.remove(DOM.win, 'resize', this.editor.windowResizeFunc);
 		},
 
 		// Internal functions
@@ -938,10 +943,10 @@
 
 				if (s.theme_advanced_resizing_use_cookie) {
 					ed.onPostRender.add(function() {
-						var o = Cookie.getHash("TinyMCE_" + ed.id + "_size");
+						var o = Cookie.getHash("TinyMCE_" + ed.id + "_size"), c = DOM.get(ed.id + '_tbl');
 
 						if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.onPostRender(cookie = ' + (1 * !!o) + ', first = ' + (1 * !s.theme_advanced_has_resized) + ')');
-						if (!o || s.theme_advanced_has_resized)
+						if (!o)
 							return;
 
 						t.resizeTo(o.cw, o.ch);
@@ -1005,19 +1010,13 @@
 
 		_updateUndoStatus : function(ed) {
 			var cm = ed.controlManager;
-			cm.setDisabled('undo', !ed.undoManager.hasUndo() && !ed.typing);
-			cm.setDisabled('redo', !ed.undoManager.hasRedo());
-		},
-
-		_updateUndoStatus : function(ed) {
-			var cm = ed.controlManager;
 
 			cm.setDisabled('undo', !ed.undoManager.hasUndo() && !ed.typing);
 			cm.setDisabled('redo', !ed.undoManager.hasRedo());
 		},
 
 		_nodeChanged : function(ed, cm, n, co, ob) {
-			var t = this, p, de = 0, v, c, s = t.settings, cl, fz, fn, fc, bc, formatNames, matches;
+			var t = this, p, de = 0, v, c, s = t.settings, cl, fz, fn, formatNames, matches;
 
 			tinymce.each(t.stateControls, function(c) {
 				cm.setActive(c, ed.queryCommandState(t.controls[c][1]));
@@ -1039,7 +1038,8 @@
 			};
 
 			cm.setActive('visualaid', ed.hasVisual);
-			t._updateUndoStatus(ed);
+			cm.setDisabled('undo', !ed.undoManager.hasUndo() && !ed.typing);
+			cm.setDisabled('redo', !ed.undoManager.hasRedo());
 			cm.setDisabled('outdent', !ed.queryCommandState('Outdent'));
 
 			p = getParent('A');
@@ -1095,12 +1095,6 @@
 
 					if (!fn && n.style.fontFamily)
 						fn = n.style.fontFamily.replace(/[\"\']+/g, '').replace(/^([^,]+).*/, '$1').toLowerCase();
-
-					if (!fc && n.style.color)
-						fc = n.style.color;
-
-					if (!bc && n.style.backgroundColor)
-						bc = n.style.backgroundColor;
 				}
 
 				return false;
@@ -1125,20 +1119,6 @@
 					if (v['class'] && v['class'] === cl)
 						return true;
 				});
-			}
-
-			if (s.theme_advanced_show_current_color) {
-				function updateColor(controlId, color) {
-					if (c = cm.get(controlId)) {
-						if (!color)
-							color = c.settings.default_color;
-						if (color !== c.value) {
-							c.displayColor(color);
-						}
-					}
-				}
-				updateColor('forecolor', fc);
-				updateColor('backcolor', bc);
 			}
 
 			if (s.theme_advanced_show_current_color) {
