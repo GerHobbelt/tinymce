@@ -187,7 +187,7 @@
 			 * @return {Boolean} true/false if the undo manager has any redo levels.
 			 */
 			hasRedo : function() {
-				return index < data.length - 1;
+				return index < data.length - 1 && !self.typing;
 			}
 		};
 	};
