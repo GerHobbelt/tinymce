@@ -1488,7 +1488,7 @@
 
 			// Pass through
 			t.undoManager.onAdd.add(function(um, l) {
-				if (!l.initial)
+				if (um.hasUndo())
 					return t.onChange.dispatch(t, l, um);
 			});
 
@@ -2509,6 +2509,8 @@
 			if (!args.no_events)
 				self.onBeforeSetContent.dispatch(self, args);
 
+			content = args.content;
+
 			// Padd empty content in Gecko and Safari. Commands will otherwise fail on the content
 			// It will also be impossible to place the caret in the editor unless there is a BR element present
 			if (!tinymce.isIE && (content.length === 0 || /^\s+$/.test(content))) {
@@ -2518,13 +2520,14 @@
 
 			// Parse and serialize the html
 			if (args.format !== 'raw') {
-				args.content = new tinymce.html.Serializer({}, self.schema).serialize(
-					self.parser.parse(args.content)
+				content = new tinymce.html.Serializer({}, self.schema).serialize(
+					self.parser.parse(content)
 				);
 			}
 
 			// Set the new cleaned contents to the editor
-			body.innerHTML = tinymce.trim(args.content);
+			args.content = tinymce.trim(content);
+			self.dom.setHTML(body, args.content);
 
 			// Do post processing
 			if (!args.no_events)
@@ -3214,6 +3217,11 @@
 
 					// Is caracter positon keys left,right,up,down,home,end,pgdown,pgup,enter
 					if ((keyCode >= 33 && keyCode <= 36) || (keyCode >= 37 && keyCode <= 40) || keyCode == 13 || keyCode == 45) {
+						// Add position before enter key is pressed, used by IE since it still uses the default browser behavior
+						// Todo: Remove this once we normalize enter behavior on IE
+						if (tinymce.isIE && keyCode == 13)
+							t.undoManager.beforeChange();
+
 						if (t.undoManager.typing)
 							addUndo();
 
