@@ -3148,6 +3148,11 @@
 						addUndo();
 				});
 
+				// Add undo level when contents is drag/dropped within the editor
+				t.dom.bind(t.dom.getRoot(), 'dragend', function(e) {
+					addUndo();
+				});
+
 				t.onKeyUp.add(function(ed, e) {
 					var rng, parent, bookmark;
 

@@ -1039,8 +1039,7 @@
 			};
 
 			cm.setActive('visualaid', ed.hasVisual);
-			cm.setDisabled('undo', !ed.undoManager.hasUndo() && !ed.typing);
-			cm.setDisabled('redo', !ed.undoManager.hasRedo());
+			t._updateUndoStatus(ed);
 			cm.setDisabled('outdent', !ed.queryCommandState('Outdent'));
 
 			p = getParent('A');
