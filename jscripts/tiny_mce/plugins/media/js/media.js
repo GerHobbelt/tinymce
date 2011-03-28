@@ -26,9 +26,12 @@
 
 			if (elm.nodeName == "SELECT")
 				selectByValue(document.forms[0], id, value);
-			else if (elm.type == "checkbox")
-				elm.checked = !!value;
-			else
+			else if (elm.type == "checkbox") {
+				if (typeof(value) == 'string')
+					elm.checked = value.toLowerCase() === 'true' ? true : false;
+				else
+					elm.checked = !!value;
+			} else
 				elm.value = value;
 		}
 	}
