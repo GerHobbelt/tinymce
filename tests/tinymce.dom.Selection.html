@@ -464,30 +464,28 @@ test('getBookmark/setBookmark (nonintrusive) - Get bookmark inside complex html'
 	equals(rng.endOffset, 2);
 });
 
-test('select', function() {
-	var rng;
-
-	expect(8);
-
-	// Select simple element
+test('select first p', 2, function() {
 	editor.setContent('<p>text1</p><p>text2</p>');
 	editor.selection.select(editor.dom.select('p')[0]);
 	equals(editor.selection.getContent(), '<p>text1</p>', 'Select simple element, content');
 	equals(editor.selection.getStart().nodeName, 'P', 'Select simple element, nodeName');
+});
 
-	// Select complex element
+test('select table', 2, function() {
 	editor.setContent('<table><tbody><tr><td>text1</td></tr></tbody></table>');
 	editor.selection.select(editor.dom.select('table')[0]);
 	equals(editor.selection.getContent(), '<table>\n<tbody>\n<tr>\n<td>text1</td>\n</tr>\n</tbody>\n</table>', 'Select complex element, content');
 	equals(editor.selection.getNode().nodeName, 'TABLE', 'Select complex element, nodeName');
+});
 
-	// Select contents 1
+test('select table text 1', 2, function() {
 	editor.setContent('<table><tbody><tr><td id="a">text1</td><td id="b">text2</td></tr></tbody></table>');
 	editor.selection.select(editor.dom.select('table')[0], true);
 	equals(editor.selection.getStart().id, 'a', 'Expand to text content 1 (start)');
 	equals(editor.selection.getEnd().id, 'b', 'Expand to text content 1 (end)');
+});
 
-	// Select contents 2
+test('select table text 2', 2, function() {
 	editor.setContent('<table><tbody><tr><td id="a"><br /></td><td id="b"><br /></td></tr></tbody></table>');
 	editor.selection.select(editor.dom.select('table')[0], true);
 	equals(editor.dom.getParent(editor.selection.getStart(), 'td').id, 'a', 'Expand to text content 2 (start)');
@@ -633,6 +631,30 @@ test('normalize ignore img', function() {
 	equals(rng.startContainer.nodeType, 1, 'startContainer node type');
 	equals(rng.startOffset, 0, 'startContainer offset');
 	equals(rng.endContainer.nodeName, 'BODY', 'endContainer node name');
+	equals(rng.endContainer.nodeType, 1, 'endContainer node type');
+	equals(rng.endOffset, 1, 'endOffset offset');
+});
+
+test('normalize to before/after img', function() {
+	var rng;
+
+	if (tinymce.isIE) {
+		ok(true, "Skipped on IE since IE will steal focus.");
+		return;
+	}
+
+	editor.getBody().innerHTML = '<p><img src="about:blank " /></p>';
+	rng = editor.dom.createRng();
+	rng.setStart(editor.getBody(), 0);
+	rng.setEnd(editor.getBody(), 1);
+	editor.selection.setRng(rng);
+	editor.selection.normalize();
+
+	rng = editor.selection.getRng(true);
+	equals(rng.startContainer.nodeName, 'P', 'startContainer node name');
+	equals(rng.startContainer.nodeType, 1, 'startContainer node type');
+	equals(rng.startOffset, 0, 'startContainer offset');
+	equals(rng.endContainer.nodeName, 'P', 'endContainer node name');
 	equals(rng.endContainer.nodeType, 1, 'endContainer node type');
 	equals(rng.endOffset, 1, 'endOffset offset');
 });
