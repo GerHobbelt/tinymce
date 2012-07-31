@@ -282,6 +282,15 @@ tinymce.util.Quirks = function(editor) {
 
 	/**
 	 * Fixes a Gecko bug where the style attribute gets added to the wrong element when deleting between two block elements.
+	 *
+	 * Fixes do backspace/delete on this:
+	 * <p>bla[ck</p><p style="color:red">r]ed</p>
+	 *
+	 * Would become:
+	 * <p>bla|ed</p>
+	 *
+	 * Instead of:
+	 * <p style="color:red">bla|ed</p>
 	 */
 	function removeStylesWhenDeletingAccrossBlockElements() {
 		function getAttributeApplyFunction() {
@@ -301,7 +310,7 @@ tinymce.util.Quirks = function(editor) {
 		}
 
 		function isSelectionAcrossElements() {
-			return !selection.isCollapsed() && selection.getStart() != selection.getEnd();
+			return !selection.isCollapsed() && dom.getParent(selection.getStart(), dom.isBlock) != dom.getParent(selection.getEnd(), dom.isBlock);
 		}
 
 		function blockEvent(editor, e) {
@@ -691,7 +700,7 @@ tinymce.util.Quirks = function(editor) {
 	 * Fakes image/table resizing on WebKit/Opera.
 	 */
 	function fakeImageResize() {
-		var selectedElmX, selectedElmY, selectedElm, selectedElmGhost, selectedHandle, startX, startY, startW, startH,
+		var selectedElmX, selectedElmY, selectedElm, selectedElmGhost, selectedHandle, startX, startY, startW, startH, ratio,
 			resizeHandles, width, height, rootDocument = document, editableDoc = editor.getDoc();
 
 		if (!settings.object_resizing || settings.webkit_fake_resize === false) {
@@ -715,26 +724,25 @@ tinymce.util.Quirks = function(editor) {
 		};
 
 		function resizeElement(e) {
-			var deltaX, deltaY, ratio;
+			var deltaX, deltaY;
 
 			// Calc new width/height
 			deltaX = e.screenX - startX;
 			deltaY = e.screenY - startY;
-			ratio = Math.max((startW + deltaX) / startW, (startH + deltaY) / startH);
 
-			if (VK.modifierPressed(e)) {
-				// Constrain proportions
-				width = Math.round(startW * ratio);
-				height = Math.round(startH * ratio);
-			} else {
-				// Calc new size
-				width = deltaX * selectedHandle[2] + startW;
-				height = deltaY * selectedHandle[3] + startH;
-			}
+			// Calc new size
+			width = deltaX * selectedHandle[2] + startW;
+			height = deltaY * selectedHandle[3] + startH;
 
 			// Never scale down lower than 5 pixels
 			width = width < 5 ? 5 : width;
 			height = height < 5 ? 5 : height;
+
+			// Constrain proportions when modifier key is pressed or if the nw, ne, sw, se corners are moved on an image
+			if (VK.modifierPressed(e) || (selectedElm.nodeName == "IMG" && selectedHandle[2] * selectedHandle[3] !== 0)) {
+				width = Math.round(height / ratio);
+				height = Math.round(width * ratio);
+			}
 
 			// Update ghost size
 			dom.setStyles(selectedElmGhost, {
@@ -744,12 +752,12 @@ tinymce.util.Quirks = function(editor) {
 
 			// Update ghost X position if needed
 			if (selectedHandle[2] < 0 && selectedElmGhost.clientWidth <= width) {
-				dom.setStyle(selectedElmGhost, 'left', selectedElmX + deltaX);
+				dom.setStyle(selectedElmGhost, 'left', selectedElmX + (startW - width));
 			}
 
 			// Update ghost Y position if needed
 			if (selectedHandle[3] < 0 && selectedElmGhost.clientHeight <= height) {
-				dom.setStyle(selectedElmGhost, 'top', selectedElmY + deltaY);
+				dom.setStyle(selectedElmGhost, 'top', selectedElmY + (startH - height));
 			}
 		}
 
@@ -821,6 +829,7 @@ tinymce.util.Quirks = function(editor) {
 						startY = e.screenY;
 						startW = selectedElm.clientWidth;
 						startH = selectedElm.clientHeight;
+						ratio = startH / startW;
 						selectedHandle = handle;
 
 						selectedElmGhost = selectedElm.cloneNode(true);

@@ -346,7 +346,7 @@
 				if (container && container.nodeType == 3 && offset >= container.nodeValue.length) {
 					// Insert extra BR element at the end block elements
 					if (!tinymce.isIE && !hasRightSideBr()) {
-						brElm = dom.create('br')
+						brElm = dom.create('br');
 						rng.insertNode(brElm);
 						rng.setStartAfter(brElm);
 						rng.setEndAfter(brElm);
@@ -431,7 +431,7 @@
 			// Setup range items and newBlockName
 			container = rng.startContainer;
 			offset = rng.startOffset;
-			newBlockName = settings.forced_root_block;
+			newBlockName = (settings.force_p_newlines ? 'p' : '') || settings.forced_root_block;
 			newBlockName = newBlockName ? newBlockName.toUpperCase() : '';
 			documentMode = dom.doc.documentMode;
 			shiftKey = evt.shiftKey;
