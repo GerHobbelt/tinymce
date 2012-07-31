@@ -1273,6 +1273,10 @@
 								// Caret doesn't get rendered when you mousedown on the HTML element on FF 3.x
 								t.onMouseDown.add(function(ed, e) {
 									if (e.target.nodeName === "HTML") {
+										// Setting the contentEditable off/on seems to force caret mode in the editor and enabled auto focus
+										b.contentEditable = false;
+										b.contentEditable = true;
+
 										d.designMode = 'on'; // Render the caret
 
 										// Remove design mode again after a while so it has some time to execute
@@ -1865,18 +1869,25 @@
 		 * @param {Boolean} sf Skip DOM focus. Just set is as the active editor.
 		 */
 		focus : function(sf) {
-			var oed, t = this, ce = t.settings.content_editable, ieRng, controlElm, doc = t.getDoc();
+			var oed, t = this, selection = t.selection, ce = t.settings.content_editable, ieRng, controlElm, doc = t.getDoc();
 
 			if (!sf) {
 				// Get selected control element
-				ieRng = t.selection.getRng();
+				ieRng = selection.getRng();
 				if (ieRng.item) {
 					controlElm = ieRng.item(0);
 				}
 
+				selection.normalize();
+
 				// Is not content editable
 				if (!ce)
 					t.getWin().focus();
+
+				// Focus the body as well since it's contentEditable
+				if (tinymce.isGecko) {
+					t.getBody().focus();
+				}
 
 				// Restore selected control element
 				// This is needed when for example an image is selected within a
@@ -2573,6 +2584,8 @@
 			if (!args.no_events)
 				self.onSetContent.dispatch(self, args);
 
+			self.selection.normalize();
+
 			return args.content;
 		},
 
@@ -3214,6 +3227,21 @@
 				t.onMouseDown.add(function() {
 					if (t.undoManager.typing)
 						addUndo();
+				});
+			}
+
+			// Fire a nodeChanged when the selection is changed on WebKit this fixes selection issues on iOS5
+			// It only fires the nodeChange event every 50ms since it would other wise update the UI when you type and it hogs the CPU
+			if (tinymce.isWebKit) {
+				dom.bind(t.getDoc(), 'selectionchange', function() {
+					if (t.selectionTimer) {
+						window.clearTimeout(t.selectionTimer);
+						t.selectionTimer = 0;
+					}
+
+					t.selectionTimer = window.setTimeout(function() {
+						t.nodeChanged();
+					}, 50);
 				});
 			}
 

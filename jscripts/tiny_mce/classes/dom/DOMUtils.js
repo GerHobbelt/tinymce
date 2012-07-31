@@ -737,12 +737,12 @@
 		 * @return {String} Attribute value string, default value or null if the attribute wasn't found.
 		 */
 		getAttrib : function(e, n, dv) {
-			var v, t = this;
+			var v, t = this, undef;
 
 			e = t.get(e);
 
 			if (!e || e.nodeType !== 1)
-				return false;
+				return dv === undef ? false : dv;
 
 			if (!is(dv))
 				dv = '';
@@ -854,7 +854,7 @@
 				}
 			}
 
-			return (v !== undefined && v !== null && v !== '') ? '' + v : dv;
+			return (v !== undef && v !== null && v !== '') ? '' + v : dv;
 		},
 
 		/**
@@ -1588,12 +1588,12 @@
 						if (elements && elements[node.nodeName.toLowerCase()])
 							return false;
 
-						// Keep elements with data attributes or name attribute like <a name="1"></a>
+						// Keep elements with data-bookmark attributes or name attribute like <a name="1"></a>
 						attributes = self.getAttribs(node);
 						i = node.attributes.length;
 						while (i--) {
 							name = node.attributes[i].nodeName;
-							if (name === "name" || name.indexOf('data-') === 0)
+							if (name === "name" || name === 'data-mce-bookmark')
 								return false;
 						}
 					}
