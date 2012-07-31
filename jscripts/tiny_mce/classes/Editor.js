@@ -178,6 +178,14 @@
 			 */			
 			self.contentCSS = [];
 
+			/**
+			 * Array of CSS styles to add to head of document when the editor loads.
+			 *
+			 * @property contentStyles
+			 * @type Array
+			 */
+			self.contentStyles = [];
+
 			// Creates all events like onClick, onSetContent etc see Editor.Events.js for the actual logic
 			self.setupEvents();
 
@@ -418,12 +426,6 @@
 			 */
 			t.controlManager = new tinymce.ControlManager(t);
 
-			t.onExecCommand.add(function(ed, c) {
-				// Don't refresh the select lists until caret move
-				if (!/^(FontName|FontSize)$/.test(c))
-					t.nodeChanged();
-			});
-
 			// Enables users to override the control factory
 			t.onBeforeRenderUI.dispatch(t, t.controlManager);
 
@@ -590,7 +592,7 @@
 		 * @method initContentBody
 		 */
 		initContentBody : function() {
-			var self = this, settings = self.settings, targetElm = DOM.get(self.id), doc = self.getDoc(), html, body;
+			var self = this, settings = self.settings, targetElm = DOM.get(self.id), doc = self.getDoc(), html, body, contentCssText;
 
 			// Setup iframe body
 			if ((!isIE || !tinymce.relaxedDomain) && !settings.content_editable) {
@@ -759,6 +761,12 @@
 			self.enterKey = new tinymce.EnterKey(self);
 			self.editorCommands = new tinymce.EditorCommands(self);
 
+			self.onExecCommand.add(function(editor, command) {
+				// Don't refresh the select lists until caret move
+				if (!/^(FontName|FontSize)$/.test(command))
+					self.nodeChanged();
+			});
+
 			// Pass through
 			self.serializer.onPreProcess.add(function(se, o) {
 				return self.onPreProcess.dispatch(self, o, se);
@@ -830,6 +838,17 @@
 			self.execCallback('init_instance_callback', self);
 			self.focus(true);
 			self.nodeChanged({initial : true});
+
+			// Add editor specific CSS styles
+			if (self.contentStyles.length > 0) {
+				contentCssText = '';
+
+				each(self.contentStyles, function(style) {
+					contentCssText += style + "\r\n";
+				});
+
+				self.dom.addStyle(contentCssText);
+			}
 
 			// Load specified content CSS last
 			each(self.contentCSS, function(url) {
@@ -1789,7 +1808,7 @@
 						return;
 
 					case 'A':
-						if (!elm.href) {
+						if (!dom.getAttrib(elm, 'href', false)) {
 							value = dom.getAttrib(elm, 'name') || elm.id;
 							cls = 'mceItemAnchor';
 
@@ -1823,13 +1842,12 @@
 				// Don't clear the window or document if content editable
 				// is enabled since other instances might still be present
 				if (!self.settings.content_editable) {
-					Event.clear(self.getWin());
-					Event.clear(self.getDoc());
+					Event.unbind(self.getWin());
+					Event.unbind(self.getDoc());
 				}
 
-				Event.clear(self.getBody());
-				Event.clear(self.formElement);
-				Event.unbind(elm);
+				Event.unbind(self.getBody());
+				Event.clear(elm);
 
 				self.execCallback('remove_instance_callback', self);
 				self.onRemove.dispatch(self);
