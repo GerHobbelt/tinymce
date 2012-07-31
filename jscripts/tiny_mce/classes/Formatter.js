@@ -41,11 +41,24 @@
 			isBlock = dom.isBlock,
 			forcedRootBlock = ed.settings.forced_root_block,
 			nodeIndex = dom.nodeIndex,
-			INVISIBLE_CHAR = '\uFEFF',
+			INVISIBLE_CHAR = tinymce.isGecko ? '\u200B' : '\uFEFF',
 			MCE_ATTR_RE = /^(src|href|style)$/,
 			FALSE = false,
 			TRUE = true,
 			undefined;
+
+		// Returns the content editable state of a node
+		function getContentEditable(node) {
+			var contentEditable = node.getAttribute("data-mce-contenteditable");
+
+			// Check for fake content editable
+			if (contentEditable && contentEditable !== "inherit") {
+				return contentEditable;
+			}
+
+			// Check for real content editable
+			return node.contentEditable !== "inherit" ? node.contentEditable : null;
+		};
 
 		function isArray(obj) {
 			return obj instanceof Array;
@@ -231,8 +244,8 @@
 					each(tinymce.grep(node.childNodes), process);
 					return 0;
 				} else {
-					currentWrapElm = wrapElm.cloneNode(FALSE);
-					
+					currentWrapElm = dom.clone(wrapElm, FALSE);
+
 					// create a list of the nodes on the same side of the list as the selection
 					each(tinymce.grep(node.childNodes), function(n, index) {
 						if ((startIndex < listIndex && index < listIndex) || (startIndex > listIndex && index > listIndex)) {
@@ -240,7 +253,7 @@
 							n.parentNode.removeChild(n);
 						}
 					});
-					
+
 					// insert the wrapping element either before or after the list.
 					if (startIndex < listIndex) {
 						node.insertBefore(currentWrapElm, list);
@@ -258,9 +271,9 @@
 					return currentWrapElm;
 				}
 			};
-			
+
 			function applyRngStyle(rng, bookmark, node_specific) {
-				var newWrappers = [], wrapName, wrapElm;
+				var newWrappers = [], wrapName, wrapElm, contentEditable = true;
 
 				// Setup wrapper element
 				wrapName = format.inline || format.block;
@@ -274,7 +287,18 @@
 					 * Process a list of nodes wrap them.
 					 */
 					function process(node) {
-						var nodeName = node.nodeName.toLowerCase(), parentName = node.parentNode.nodeName.toLowerCase(), found;
+						var nodeName, parentName, found, hasContentEditableState, lastContentEditable;
+
+						lastContentEditable = contentEditable;
+						nodeName = node.nodeName.toLowerCase();
+						parentName = node.parentNode.nodeName.toLowerCase();
+
+						// Node has a contentEditable value
+						if (node.nodeType === 1 && getContentEditable(node)) {
+							lastContentEditable = contentEditable;
+							contentEditable = getContentEditable(node) === "true";
+							hasContentEditableState = true; // We don't want to wrap the container only it's children
+						}
 
 						// Stop wrapping on br elements
 						if (isEq(nodeName, 'br')) {
@@ -294,7 +318,7 @@
 						}
 
 						// Can we rename the block
-						if (format.block && !format.wrapper && isTextBlock(nodeName)) {
+						if (contentEditable && !hasContentEditableState && format.block && !format.wrapper && isTextBlock(nodeName)) {
 							node = dom.rename(node, wrapName);
 							setElementFormat(node);
 							newWrappers.push(node);
@@ -325,12 +349,12 @@
 						}
 
 						// Is it valid to wrap this item
-						if (isValid(wrapName, nodeName) && isValid(parentName, wrapName) &&
+						if (contentEditable && !hasContentEditableState && isValid(wrapName, nodeName) && isValid(parentName, wrapName) &&
 								!(!node_specific && node.nodeType === 3 && node.nodeValue.length === 1 && node.nodeValue.charCodeAt(0) === 65279) && !isCaretNode(node)) {
 							// Start wrapping
 							if (!currentWrapElm) {
 								// Wrap the node
-								currentWrapElm = wrapElm.cloneNode(FALSE);
+								currentWrapElm = dom.clone(wrapElm, FALSE);
 								node.parentNode.insertBefore(currentWrapElm, node);
 								newWrappers.push(currentWrapElm);
 							}
@@ -342,8 +366,12 @@
 						} else {
 							// Start a new wrapper for possible children
 							currentWrapElm = 0;
-
+							
 							each(tinymce.grep(node.childNodes), process);
+
+							if (hasContentEditableState) {
+								contentEditable = lastContentEditable; // Restore last contentEditable state from stack
+							}
 
 							// End the last wrapper
 							currentWrapElm = 0;
@@ -361,7 +389,7 @@
 							var i, currentWrapElm, children;
 
 							if (node.nodeName === 'A') {
-								currentWrapElm = wrapElm.cloneNode(FALSE);
+								currentWrapElm = dom.clone(wrapElm, FALSE);
 								newWrappers.push(currentWrapElm);
 
 								children = tinymce.grep(node.childNodes);
@@ -379,6 +407,7 @@
 				}
 
 				// Cleanup
+				
 				each(newWrappers, function(node) {
 					var childCount;
 
@@ -405,7 +434,7 @@
 
 						// If child was found and of the same type as the current node
 						if (child && matchName(child, format)) {
-							clone = child.cloneNode(FALSE);
+							clone = dom.clone(child, FALSE);
 							setElementFormat(clone);
 
 							dom.replace(clone, node, TRUE);
@@ -523,25 +552,40 @@
 		 * @param {Node/Range} node Optional node or DOM range to remove the format from defaults to current selection.
 		 */
 		function remove(name, vars, node) {
-			var formatList = get(name), format = formatList[0], bookmark, i, rng;
+			var formatList = get(name), format = formatList[0], bookmark, i, rng, contentEditable = true;
 
 			// Merges the styles for each node
 			function process(node) {
-				var children, i, l;
+				var children, i, l, localContentEditable, lastContentEditable, hasContentEditableState;
+
+				// Node has a contentEditable value
+				if (node.nodeType === 1 && getContentEditable(node)) {
+					lastContentEditable = contentEditable;
+					contentEditable = getContentEditable(node) === "true";
+					hasContentEditableState = true; // We don't want to wrap the container only it's children
+				}
 
 				// Grab the children first since the nodelist might be changed
 				children = tinymce.grep(node.childNodes);
 
 				// Process current node
-				for (i = 0, l = formatList.length; i < l; i++) {
-					if (removeFormat(formatList[i], vars, node, node))
-						break;
+				if (contentEditable && !hasContentEditableState) {
+					for (i = 0, l = formatList.length; i < l; i++) {
+						if (removeFormat(formatList[i], vars, node, node))
+							break;
+					}
 				}
 
 				// Process the children
 				if (format.deep) {
-					for (i = 0, l = children.length; i < l; i++)
-						process(children[i]);
+					if (children.length) {					
+						for (i = 0, l = children.length; i < l; i++)
+							process(children[i]);
+
+						if (hasContentEditableState) {
+							contentEditable = lastContentEditable; // Restore last contentEditable state from stack
+						}
+					}
 				}
 			};
 
@@ -572,7 +616,7 @@
 					formatRootParent = format_root.parentNode;
 
 					for (parent = container.parentNode; parent && parent != formatRootParent; parent = parent.parentNode) {
-						clone = parent.cloneNode(FALSE);
+						clone = dom.clone(parent, FALSE);
 
 						for (i = 0; i < formatList.length; i++) {
 							if (removeFormat(formatList[i], vars, clone, clone)) {
@@ -1017,7 +1061,8 @@
 		 * @return {Object} Expanded range like object.
 		 */
 		function expandRng(rng, format, remove) {
-			var startContainer = rng.startContainer,
+			var sibling, lastIdx, leaf,
+				startContainer = rng.startContainer,
 				startOffset = rng.startOffset,
 				endContainer = rng.endContainer,
 				endOffset = rng.endOffset, sibling, lastIdx, leaf, endPoint;
@@ -1091,6 +1136,25 @@
 				if (endContainer.nodeType == 3)
 					endOffset = endContainer.nodeValue.length;
 			}
+
+			// Expands the node to the closes contentEditable false element if it exists
+			function findParentContentEditable(node) {
+				var parent = node;
+
+				while (parent) {
+					if (parent.nodeType === 1 && getContentEditable(parent)) {
+						return getContentEditable(parent) === "false" ? parent : node;
+					}
+
+					parent = parent.parentNode;
+				}
+
+				return node;
+			};
+
+			// Expand to closest contentEditable element
+			startContainer = findParentContentEditable(startContainer);
+			endContainer = findParentContentEditable(endContainer);
 
 			// Exclude bookmark nodes if possible
 			if (isBookmarkNode(startContainer.parentNode) || isBookmarkNode(startContainer)) {
@@ -1702,17 +1766,14 @@
 		};
 
 		function performCaretAction(type, name, vars) {
-			var invisibleChar, caretContainerId = '_mce_caret', debug = ed.settings.caret_debug;
-
-			// Setup invisible character use zero width space on Gecko since it doesn't change the heigt of the container
-			invisibleChar = tinymce.isGecko ? '\u200B' : INVISIBLE_CHAR;
+			var caretContainerId = '_mce_caret', debug = ed.settings.caret_debug;
 
 			// Creates a caret container bogus element
 			function createCaretContainer(fill) {
 				var caretContainer = dom.create('span', {id: caretContainerId, 'data-mce-bogus': true, style: debug ? 'color:red' : ''});
 
 				if (fill) {
-					caretContainer.appendChild(ed.getDoc().createTextNode(invisibleChar));
+					caretContainer.appendChild(ed.getDoc().createTextNode(INVISIBLE_CHAR));
 				}
 
 				return caretContainer;
@@ -1720,7 +1781,7 @@
 
 			function isCaretContainerEmpty(node, nodes) {
 				while (node) {
-					if ((node.nodeType === 3 && node.nodeValue !== invisibleChar) || node.childNodes.length > 1) {
+					if ((node.nodeType === 3 && node.nodeValue !== INVISIBLE_CHAR) || node.childNodes.length > 1) {
 						return false;
 					}
 
@@ -1829,7 +1890,7 @@
 					// Move selection back to caret position
 					selection.moveToBookmark(bookmark);
 				} else {
-					if (!caretContainer || textNode.nodeValue !== invisibleChar) {
+					if (!caretContainer || textNode.nodeValue !== INVISIBLE_CHAR) {
 						caretContainer = createCaretContainer(true);
 						textNode = caretContainer.firstChild;
 
@@ -1855,7 +1916,7 @@
 				node = container;
 
 				if (container.nodeType == 3) {
-					if (offset != container.nodeValue.length || container.nodeValue === invisibleChar) {
+					if (offset != container.nodeValue.length || container.nodeValue === INVISIBLE_CHAR) {
 						hasContentAfter = true;
 					}
 
@@ -1903,12 +1964,12 @@
 
 					node = caretContainer;
 					for (i = parents.length - 1; i >= 0; i--) {
-						node.appendChild(parents[i].cloneNode(false));
+						node.appendChild(dom.clone(parents[i], false));
 						node = node.firstChild;
 					}
 
 					// Insert invisible character into inner most format element
-					node.appendChild(dom.doc.createTextNode(invisibleChar));
+					node.appendChild(dom.doc.createTextNode(INVISIBLE_CHAR));
 					node = node.firstChild;
 
 					// Insert caret container after the formated node

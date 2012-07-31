@@ -853,8 +853,8 @@
 				inline_styles : 1,
 				convert_fonts_to_spans : true,
 				indent : 'simple',
-				indent_before : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr',
-				indent_after : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr',
+				indent_before : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside',
+				indent_after : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside',
 				validate : true,
 				entity_encoding : 'named',
 				url_converter : t.convertURL,
@@ -914,7 +914,7 @@
 
 			// Page is not loaded yet, wait for it
 			if (!Event.domLoaded) {
-				Event.add(document, 'init', function() {
+				Event.add(window, 'ready', function() {
 					t.render();
 				});
 				return;
@@ -2838,17 +2838,32 @@
 		remove : function() {
 			var t = this, e = t.getContainer();
 
-			t.removed = 1; // Cancels post remove event execution
-			t.hide();
+			if (!t.removed) {
+				t.removed = 1; // Cancels post remove event execution
+				t.hide();
 
-			t.execCallback('remove_instance_callback', t);
-			t.onRemove.dispatch(t);
+				// Remove all events
 
-			// Clear all execCommand listeners this is required to avoid errors if the editor was removed inside another command
-			t.onExecCommand.listeners = [];
+				// Don't clear the window or document if content editable
+				// is enabled since other instances might still be present
+				if (!t.settings.content_editable) {
+					Event.clear(t.getWin());
+					Event.clear(t.getDoc());
+				}
 
-			tinymce.remove(t);
-			DOM.remove(e);
+				Event.clear(t.getBody());
+				Event.clear(t.formElement);
+				Event.unbind(e);
+
+				t.execCallback('remove_instance_callback', t);
+				t.onRemove.dispatch(t);
+
+				// Clear all execCommand listeners this is required to avoid errors if the editor was removed inside another command
+				t.onExecCommand.listeners = [];
+
+				tinymce.remove(t);
+				DOM.remove(e);
+			}
 		},
 
 		/**
@@ -2866,6 +2881,13 @@
 			if (t.destroyed)
 				return;
 
+			// We must unbind on Gecko since it would otherwise produce the pesky "attempt to run compile-and-go script on a cleared scope" message
+			if (isGecko) {
+				Event.unbind(t.getDoc());
+				Event.unbind(t.getWin());
+				Event.unbind(t.getBody());
+			}
+
 			if (!s) {
 				tinymce.removeUnload(t.destroy);
 				tinyMCE.onBeforeUnload.remove(t._beforeUnload);
@@ -2878,18 +2900,6 @@
 				t.controlManager.destroy();
 				t.selection.destroy();
 				t.dom.destroy();
-
-				// Remove all events
-
-				// Don't clear the window or document if content editable
-				// is enabled since other instances might still be present
-				if (!t.settings.content_editable) {
-					Event.clear(t.getWin());
-					Event.clear(t.getDoc());
-				}
-
-				Event.clear(t.getBody());
-				Event.clear(t.formElement);
 			}
 
 			if (t.formElement) {
@@ -3253,57 +3263,6 @@
 				t.onMouseDown.add(function() {
 					if (t.undoManager.typing)
 						addUndo();
-				});
-			}
-
-			// Bug fix for FireFox keeping styles from end of selection instead of start.
-			if (tinymce.isGecko) {
-				function getAttributeApplyFunction() {
-					var template = t.dom.getAttribs(t.selection.getStart().cloneNode(false));
-
-					return function() {
-						var target = t.selection.getStart();
-
-						if (target !== t.getBody()) {
-							t.dom.setAttrib(target, "style", null);
-
-						each(template, function(attr) {
-							target.setAttributeNode(attr.cloneNode(true));
-						});
-						}
-					};
-				}
-
-				function isSelectionAcrossElements() {
-					var s = t.selection;
-
-					return !s.isCollapsed() && s.getStart() != s.getEnd();
-				}
-
-				t.onKeyPress.add(function(ed, e) {
-					var applyAttributes;
-
-					if ((e.keyCode == 8 || e.keyCode == 46) && isSelectionAcrossElements()) {
-						applyAttributes = getAttributeApplyFunction();
-						t.getDoc().execCommand('delete', false, null);
-						applyAttributes();
-
-						return Event.cancel(e);
-					}
-				});
-
-				t.dom.bind(t.getDoc(), 'cut', function(e) {
-					var applyAttributes;
-
-					if (isSelectionAcrossElements()) {
-						applyAttributes = getAttributeApplyFunction();
-						t.onKeyUp.addToTop(Event.cancel, Event);
-
-						setTimeout(function() {
-							applyAttributes();
-							t.onKeyUp.remove(Event.cancel, Event);
-						}, 0);
-					}
 				});
 			}
 		},

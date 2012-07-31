@@ -105,6 +105,7 @@
 			t.onRenderMenu = new tinymce.util.Dispatcher(this);
 
 			t.classPrefix = 'mceListBox';
+			t.marked = {};
 		},
 
 		/**
@@ -116,6 +117,8 @@
 		 */
 		select : function(va) {
 			var t = this, fv, f;
+
+			t.marked = {};
 
 			if (va == undefined)
 				return t.selectByIndex(-1);
@@ -155,6 +158,8 @@
 		selectByIndex : function(idx) {
 			var t = this, e, o, label;
 
+			t.marked = {};
+
 			if (idx != t.selectedIndex) {
 				e = DOM.get(t.id + '_text');
 				label = DOM.get(t.id + '_voiceDesc');
@@ -176,6 +181,15 @@
 				}
 				e = 0;
 			}
+		},
+
+		/**
+		 * Marks a specific item by name. Marked values are optional items to mark as active.
+		 *
+		 * @param {String} value Value item to mark.
+		 */
+		mark : function(value) {
+			this.marked[value] = true;
 		},
 
 		/**
@@ -255,13 +269,19 @@
 			m.settings.keyboard_focus = !tinymce.isOpera; // Opera is buggy when it comes to auto focus
 
 			// Select in menu
-			if (t.oldID)
-				m.items[t.oldID].setSelected(0);
+			each(t.items, function(o) {
+				if (m.items[o.id]) {
+					m.items[o.id].setSelected(0);
+				}
+			});
 
 			each(t.items, function(o) {
+				if (m.items[o.id] && t.marked[o.value]) {
+					m.items[o.id].setSelected(1);
+				}
+
 				if (o.value === t.selectedValue) {
 					m.items[o.id].setSelected(1);
-					t.oldID = o.id;
 				}
 			});
 

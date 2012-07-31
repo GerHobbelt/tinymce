@@ -19,42 +19,11 @@
 		TRUE = true,
 		FALSE = false;
 
-	function cloneFormats(node) {
-		var clone, temp, inner;
-
-		do {
-			if (/^(SPAN|STRONG|B|EM|I|FONT|STRIKE|U)$/.test(node.nodeName)) {
-				if (clone) {
-					temp = node.cloneNode(false);
-					temp.appendChild(clone);
-					clone = temp;
-				} else {
-					clone = inner = node.cloneNode(false);
-				}
-
-				clone.removeAttribute('id');
-			}
-		} while (node = node.parentNode);
-
-		if (clone)
-			return {wrapper : clone, inner : inner};
-	};
-
-	// Checks if the selection/caret is at the end of the specified block element
-	function isAtEnd(rng, par) {
-		var rng2 = par.ownerDocument.createRange();
-
-		rng2.setStart(rng.endContainer, rng.endOffset);
-		rng2.setEndAfter(par);
-
-		// Get number of characters to the right of the cursor if it's zero then we are at the end and need to merge the next block element
-		return rng2.cloneContents().textContent.length == 0;
-	};
-
 	function splitList(selection, dom, li) {
 		var listBlock, block;
 
-		if (dom.isEmpty(li)) {
+		// TODO: Fix so this doesn't use native IE logic
+		if (dom.isEmpty(li) && !isIE) {
 			listBlock = dom.getParent(li, 'ul,ol');
 
 			if (!dom.getParent(listBlock.parentNode, 'ul,ol')) {
@@ -192,55 +161,10 @@
 			}
 
 			if (s.force_p_newlines) {
-				if (!isIE) {
-					ed.onKeyPress.add(function(ed, e) {
-						if (e.keyCode == 13 && !e.shiftKey && !t.insertPara(e))
-							Event.cancel(e);
-					});
-				} else {
-					// Ungly hack to for IE to preserve the formatting when you press
-					// enter at the end of a block element with formatted contents
-					// This logic overrides the browsers default logic with
-					// custom logic that enables us to control the output
-					tinymce.addUnload(function() {
-						t._previousFormats = 0; // Fix IE leak
-					});
-
-					ed.onKeyPress.add(function(ed, e) {
-						t._previousFormats = 0;
-
-						// Clone the current formats, this will later be applied to the new block contents
-						if (e.keyCode == 13 && !e.shiftKey && ed.selection.isCollapsed() && s.keep_styles)
-							t._previousFormats = cloneFormats(ed.selection.getStart());
-					});
-
-					ed.onKeyUp.add(function(ed, e) {
-						// Let IE break the element and the wrap the new caret location in the previous formats
-						if (e.keyCode == 13 && !e.shiftKey) {
-							var parent = ed.selection.getStart(), fmt = t._previousFormats;
-
-							// Parent is an empty block
-							if (!parent.hasChildNodes() && fmt) {
-								parent = dom.getParent(parent, dom.isBlock);
-
-								if (parent && parent.nodeName != 'LI') {
-									parent.innerHTML = '';
-
-									if (t._previousFormats) {
-										parent.appendChild(fmt.wrapper);
-										fmt.inner.innerHTML = '\uFEFF';
-									} else
-										parent.innerHTML = '\uFEFF';
-
-									selection.select(parent, 1);
-									selection.collapse(true);
-									ed.getDoc().execCommand('Delete', false, null);
-									t._previousFormats = 0;
-								}
-							}
-						}
-					});
-				}
+				ed.onKeyPress.add(function(ed, e) {
+					if (e.keyCode == 13 && !e.shiftKey && !t.insertPara(e))
+						Event.cancel(e);
+				});
 
 				if (isGecko) {
 					ed.onKeyDown.add(function(ed, e) {
@@ -324,8 +248,79 @@
 		},
 
 		insertPara : function(e) {
-			var t = this, ed = t.editor, dom = ed.dom, d = ed.getDoc(), se = ed.settings, s = ed.selection.getSel(), r = s.getRangeAt(0), b = d.body;
-			var rb, ra, dir, sn, so, en, eo, sb, eb, bn, bef, aft, sc, ec, n, vp = dom.getViewPort(ed.getWin()), y, ch, car;
+			var t = this, ed = t.editor, dom = ed.dom, selection = ed.selection, d = ed.getDoc(), se = ed.settings, s = selection.getSel(), r = selection.getRng(true), b = d.body;
+			var rb, ra, dir, sn, so, en, eo, sb, eb, bn, bef, aft, sc, ec, n, ch, containerBlock, beforeCaretNode, afterCaretNode;
+
+			// Checks if the selection/caret is at the end of the specified block element
+			function isAtEnd(rng, par) {
+				var rng2 = rng.cloneRange();
+
+				rng2.setStart(rng.endContainer, rng.endOffset);
+				rng2.setEndAfter(par);
+
+				// Get number of characters to the right of the cursor if it's zero then we are at the end and need to merge the next block element
+				return dom.isEmpty(rng2.cloneContents());
+			};
+
+			function moveToCaretPosition(root, scroll) {
+				var walker, node, rng, y, vp;
+
+				rng = dom.createRng();
+
+				if (root.hasChildNodes()) {
+					walker = new tinymce.dom.TreeWalker(root, root);
+
+					while (node = walker.current()) {
+						if (node.nodeType == 3) {
+							rng.setStart(node, 0);
+							rng.setEnd(node, 0);
+							break;
+						}
+
+						if (/^(BR|IMG)$/.test(node.nodeName)) {
+							rng.setStartBefore(node);
+							rng.setEndBefore(node);
+							break;
+						}
+						
+						node = walker.next();
+					}
+				} else {
+					rng.setStart(root, 0);
+					rng.setEnd(root, 0);
+				}
+
+				selection.setRng(rng);
+
+				if (scroll !== false) {
+					vp = dom.getViewPort(ed.getWin());
+
+					// scrollIntoView seems to scroll the parent window in most browsers now including FF 3.0b4 so it's time to stop using it and do it our selfs
+					y = dom.getPos(root).y;
+
+					// Is element within viewport
+					if (y < vp.y || y + 25 > vp.y + vp.h) {
+						ed.getWin().scrollTo(0, y < vp.y ? y : y - vp.h + 25); // Needs to be hardcoded to roughly one line of text if a huge text block is broken into two blocks
+
+						/*console.debug(
+							'Element: y=' + y + ', h=' + ch + ', ' +
+							'Viewport: y=' + vp.y + ", h=" + vp.h + ', bottom=' + (vp.y + vp.h)
+						);*/
+					}
+				}
+			};
+
+			function clean(node) {
+				if (node.nodeType == 3 && node.nodeValue.length == 0) {
+					dom.remove(node);
+				}
+
+				if (node.hasChildNodes()) {
+					for (var i = 0; i < node.childNodes.length; i++) {
+						clean(node.childNodes[i]);
+					}
+				}
+			};
 
 			ed.undoManager.beforeChange();
 
@@ -334,65 +329,66 @@
 //			if (se.forced_root_block && isOpera)
 //				return TRUE;
 
-			// Setup before range
-			rb = d.createRange();
+			// Handle selection direction for browsers that support it
+			if (typeof s.anchorNode != "undefined") {
+				// Setup before range
+				rb = dom.createRng();
 
-			// If is before the first block element and in body, then move it into first block element
-			rb.setStart(s.anchorNode, s.anchorOffset);
-			rb.collapse(TRUE);
+				// If is before the first block element and in body, then move it into first block element
+				rb.setStart(s.anchorNode, s.anchorOffset);
+				rb.collapse(TRUE);
 
-			// Setup after range
-			ra = d.createRange();
+				// Setup after range
+				ra = dom.createRng();
 
-			// If is before the first block element and in body, then move it into first block element
-			ra.setStart(s.focusNode, s.focusOffset);
-			ra.collapse(TRUE);
+				// If is before the first block element and in body, then move it into first block element
+				ra.setStart(s.focusNode, s.focusOffset);
+				ra.collapse(TRUE);
 
-			// Setup start/end points
-			dir = rb.compareBoundaryPoints(rb.START_TO_END, ra) < 0;
-			sn = dir ? s.anchorNode : s.focusNode;
-			so = dir ? s.anchorOffset : s.focusOffset;
-			en = dir ? s.focusNode : s.anchorNode;
-			eo = dir ? s.focusOffset : s.anchorOffset;
+				// Setup start/end points
+				dir = rb.compareBoundaryPoints(rb.START_TO_END, ra) < 0;
+				sn = dir ? s.anchorNode : s.focusNode;
+				so = dir ? s.anchorOffset : s.focusOffset;
+				en = dir ? s.focusNode : s.anchorNode;
+				eo = dir ? s.focusOffset : s.anchorOffset;
+			} else {
+				rb = r.cloneRange();
+				rb.collapse(TRUE);
+
+				ra = r.cloneRange();
+				ra.collapse(FALSE);
+
+				sn = r.startContainer;
+				so = r.startOffset;
+				en = r.endContainer;
+				eo = r.endOffset;
+			}
 
 			// If selection is in empty table cell
 			if (sn === en && /^(TD|TH)$/.test(sn.nodeName)) {
-				if (sn.firstChild.nodeName == 'BR')
-					dom.remove(sn.firstChild); // Remove BR
+				sn.innerHTML = '';
 
 				// Create two new block elements
-				if (sn.childNodes.length == 0) {
-					ed.dom.add(sn, se.element, null, '<br />');
-					aft = ed.dom.add(sn, se.element, null, '<br />');
-				} else {
-					n = sn.innerHTML;
-					sn.innerHTML = '';
-					ed.dom.add(sn, se.element, null, n);
-					aft = ed.dom.add(sn, se.element, null, '<br />');
-				}
-
-				// Move caret into the last one
-				r = d.createRange();
-				r.selectNodeContents(aft);
-				r.collapse(1);
-				ed.selection.setRng(r);
+				dom.add(sn, se.element, null, isIE ? '' : '<br />');
+				aft = dom.add(sn, se.element, null, isIE ? '' : '<br />');
+				moveToCaretPosition(aft);
 
 				return FALSE;
 			}
 
 			// If the caret is in an invalid location in FF we need to move it into the first block
-			if (sn == b && en == b && b.firstChild && ed.dom.isBlock(b.firstChild)) {
+			if (sn == b && en == b && b.firstChild && dom.isBlock(b.firstChild)) {
 				sn = en = sn.firstChild;
 				so = eo = 0;
-				rb = d.createRange();
+				rb = dom.createRng();
 				rb.setStart(sn, 0);
-				ra = d.createRange();
+				ra = dom.createRng();
 				ra.setStart(en, 0);
 			}
 
 			// If the body is totally empty add a BR element this might happen on webkit
-			if (!d.body.hasChildNodes()) {
-				d.body.appendChild(dom.create('br'));
+			if (!b.hasChildNodes()) {
+				b.appendChild(dom.create('br'));
 			}
 
 			// Never use body as start or end node
@@ -406,10 +402,21 @@
 			eb = t.getParentBlock(en);
 			bn = sb ? sb.nodeName : se.element; // Get block name to create
 
+			// Break container blocks on enter in empty block element (experimental feature)
+			if (ed.settings.end_container_on_empty_block) {
+				containerBlock = dom.getParent(sb, 'hgroup,blockquote,section,article');
+				if (containerBlock && (dom.isEmpty(sb) || (sb.firstChild === sb.lastChild && (!sb.firstChild || sb.firstChild.nodeName == 'BR')))) {
+					dom.split(containerBlock, sb);
+					selection.select(sb, true);
+					selection.collapse(true);
+					return;
+				}
+			}
+
 			// Return inside list use default browser behavior
-			if (n = t.dom.getParent(sb, 'li,pre')) {
+			if (n = t.dom.getParent(sb, 'li')) {
 				if (n.nodeName == 'LI')
-					return splitList(ed.selection, t.dom, n);
+					return splitList(selection, t.dom, n);
 
 				return TRUE;
 			}
@@ -433,15 +440,21 @@
 			}
 
 			// Setup new before and after blocks
-			bef = (sb && sb.nodeName == bn) ? sb.cloneNode(0) : ed.dom.create(bn);
-			aft = (eb && eb.nodeName == bn) ? eb.cloneNode(0) : ed.dom.create(bn);
+			bef = (sb && sb.nodeName == bn) ? dom.clone(sb, false) : dom.create(bn);
+			aft = (eb && eb.nodeName == bn) ? dom.clone(eb, false) : dom.create(bn);
 
 			// Remove id from after clone
 			aft.removeAttribute('id');
 
 			// Is header and cursor is at the end, then force paragraph under
-			if (/^(H[1-6])$/.test(bn) && isAtEnd(r, sb))
-				aft = ed.dom.create(se.element);
+			if (/^(H[1-6])$/.test(bn) && isAtEnd(r, sb, dom)) {
+				aft = dom.create(se.element);
+
+				// Use header name as copy if we are in a hgroup
+				if (t.dom.getParent(sb, 'hgroup')) {
+					aft = dom.create(bn);
+				}
+			}
 
 			// Find start chop node
 			n = sc = sn;
@@ -481,7 +494,7 @@
 			aft.appendChild(ra.cloneContents() || d.createTextNode('')); // Empty text node needed for Safari
 
 			// Create range around everything
-			r = d.createRange();
+			r = dom.createRng();
 			if (!sc.previousSibling && sc.parentNode.nodeName == bn) {
 				r.setStartBefore(sc.parentNode);
 			} else {
@@ -496,11 +509,15 @@
 			else
 				r.setEnd(ra.endContainer, ra.endOffset);
 
-			// Delete and replace it with new block elements
-			r.deleteContents();
+			if (!isIE || sb != eb || (sb && !dom.isEmpty(sb))) {
+				r.deleteContents();
+			}
 
-			if (isOpera)
-				ed.getWin().scrollTo(0, vp.y);
+			// Remove range end point if it's empty
+			n = r.startContainer.childNodes[r.startOffset];
+			if (n && !n.hasChildNodes()) {
+				dom.remove(n);
+			}
 
 			// Never wrap blocks in blocks
 			if (bef.firstChild && bef.firstChild.nodeName == bn)
@@ -510,9 +527,15 @@
 				aft.innerHTML = aft.firstChild.innerHTML;
 
 			function appendStyles(e, en) {
-				var nl = [], nn, n, i;
+				var nl = [], nn, n, i, padd;
 
-				e.innerHTML = '';
+				 // Use BR on W3C browsers and empty string on IE
+				padd = isIE ? '' : '<br />';
+
+				// Needs to be removed using removeChild since innerHTML adds &nbsp; on IE
+				while (e.firstChild) {
+					e.removeChild(e.firstChild);
+				}
 
 				// Make clones of style elements
 				if (se.keep_styles) {
@@ -533,19 +556,30 @@
 						nn = nn.appendChild(nl[i]);
 
 					// Padd most inner style element
-					nl[0].innerHTML = isOpera ? '\u00a0' : '<br />'; // Extra space for Opera so that the caret can move there
+					nl[0].innerHTML = padd;
 					return nl[0]; // Move caret to most inner element
 				} else
-					e.innerHTML = isOpera ? '\u00a0' : '<br />'; // Extra space for Opera so that the caret can move there
+					e.innerHTML = padd;
+
+				return e;
 			};
-				
+
+			// IE gets messed up if the elements has empty text nodes in them this might
+			// happen when the range spits at the end/beginning of a text node.
+			// @todo: The acutal bug should be fixed in the Range.js file this is a hot patch
+			if (isIE) {
+				clean(bef);
+				clean(aft);
+			}
+
 			// Padd empty blocks
-			if (dom.isEmpty(bef))
-				appendStyles(bef, sn);
+			if (dom.isEmpty(bef)) {
+				beforeCaretNode = appendStyles(bef, sn);
+			}
 
 			// Fill empty afterblook with current style
 			if (dom.isEmpty(aft))
-				car = appendStyles(aft, en);
+				afterCaretNode = appendStyles(aft, en);
 
 			// Opera needs this one backwards for older versions
 			if (isOpera && parseFloat(opera.version()) < 9.5) {
@@ -556,28 +590,13 @@
 				r.insertNode(bef);
 			}
 
-			// Normalize
-			aft.normalize();
-			bef.normalize();
-
-			// Move cursor and scroll into view
-			ed.selection.select(aft, true);
-			ed.selection.collapse(true);
-
-			// scrollIntoView seems to scroll the parent window in most browsers now including FF 3.0b4 so it's time to stop using it and do it our selfs
-			y = ed.dom.getPos(aft).y;
-			//ch = aft.clientHeight;
-
-			// Is element within viewport
-			if (y < vp.y || y + 25 > vp.y + vp.h) {
-				ed.getWin().scrollTo(0, y < vp.y ? y : y - vp.h + 25); // Needs to be hardcoded to roughly one line of text if a huge text block is broken into two blocks
-
-				/*console.debug(
-					'Element: y=' + y + ', h=' + ch + ', ' +
-					'Viewport: y=' + vp.y + ", h=" + vp.h + ', bottom=' + (vp.y + vp.h)
-				);*/
+			// IE doesn't render empty block elements unless you poke it with a selection
+			// So we need to detect old IE and then move the caret into that block to "render it"
+			if (selection.tridentSel && beforeCaretNode) {
+				moveToCaretPosition(beforeCaretNode, false);
 			}
 
+			moveToCaretPosition(afterCaretNode || aft);
 			ed.undoManager.add();
 
 			return FALSE;

@@ -394,12 +394,13 @@
 						}
 
 						tmpRng.moveToElementText(marker);
-					} else {
+					} else if (container.canHaveHTML) {
 						// Empty node selection for example <div>|</div>
-						marker = doc.createTextNode('\uFEFF');
-						container.appendChild(marker);
-						tmpRng.moveToElementText(marker.parentNode);
-						tmpRng.collapse(TRUE);
+						// Setting innerHTML with a span marker then remove that marker seems to keep empty block elements open
+						container.innerHTML = '<span>\uFEFF</span>';
+						marker = container.firstChild;
+						tmpRng.moveToElementText(marker);
+						tmpRng.collapse(FALSE); // Collapse false works better than true for some odd reason
 					}
 
 					ieRng.setEndPoint(start ? 'StartToStart' : 'EndToEnd', tmpRng);
@@ -415,7 +416,17 @@
 			ieRng = body.createTextRange();
 
 			// If single element selection then try making a control selection out of it
-			if (startContainer == endContainer && startContainer.nodeType == 1 && startOffset == endOffset - 1) {
+			if (startContainer == endContainer && startContainer.nodeType == 1) {
+				// Trick to place the caret inside an empty block element like <p></p>
+				if (!startContainer.hasChildNodes()) {
+					startContainer.innerHTML = '<span>\uFEFF</span><span>\uFEFF</span>';
+					ieRng.moveToElementText(startContainer.lastChild);
+					ieRng.select();
+					dom.doc.selection.clear();
+					startContainer.innerHTML = '';
+					return;
+				}
+
 				if (startOffset == endOffset - 1) {
 					try {
 						ctrlRng = body.createControlRange();

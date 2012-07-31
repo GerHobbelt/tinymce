@@ -24,6 +24,10 @@
 		ed.onKeyDown.add(function(ed, e) {
 			var rng, blockElm, node, clonedSpan, isDelete;
 
+			if (e.isDefaultPrevented()) {
+				return;
+			}
+
 			isDelete = e.keyCode == DELETE;
 			if ((isDelete || e.keyCode == BACKSPACE) && !VK.modifierPressed(e)) {
 				e.preventDefault();
@@ -75,7 +79,6 @@
 	 * like a <h1></h1> or <p></p> and then forcefully remove all contents.
 	 */
 	function emptyEditorWhenDeleting(ed) {
-
 		function serializeRng(rng) {
 			var body = ed.dom.create("body");
 			var contents = rng.cloneContents();
@@ -104,7 +107,6 @@
 				}
 			}
 		});
-
 	};
 
 	/**
@@ -185,8 +187,67 @@
 	};
 
 	/**
+	 * Fixes a Gecko bug where the style attribute gets added to the wrong element when deleting between two block elements.
+	 */
+	function removeStylesWhenDeletingAccrossBlockElements(ed) {
+		var selection = ed.selection, dom = ed.dom;
+
+		function getAttributeApplyFunction() {
+			var template = dom.getAttribs(selection.getStart().cloneNode(false));
+
+			return function() {
+				var target = selection.getStart();
+
+				if (target !== ed.getBody()) {
+					dom.setAttrib(target, "style", null);
+
+				tinymce.each(template, function(attr) {
+					target.setAttributeNode(attr.cloneNode(true));
+				});
+				}
+			};
+		}
+
+		function isSelectionAcrossElements() {
+			return !selection.isCollapsed() && selection.getStart() != selection.getEnd();
+		}
+
+		function blockEvent(ed, e) {
+			e.preventDefault();
+			return false;
+		}
+
+		ed.onKeyPress.add(function(ed, e) {
+			var applyAttributes;
+
+			if ((e.keyCode == 8 || e.keyCode == 46) && isSelectionAcrossElements()) {
+				applyAttributes = getAttributeApplyFunction();
+				ed.getDoc().execCommand('delete', false, null);
+				applyAttributes();
+				e.preventDefault();
+				return false;
+			}
+		});
+
+		dom.bind(ed.getDoc(), 'cut', function(e) {
+			var applyAttributes;
+
+			if (isSelectionAcrossElements()) {
+				applyAttributes = getAttributeApplyFunction();
+				ed.onKeyUp.addToTop(blockEvent);
+
+				setTimeout(function() {
+					applyAttributes();
+					ed.onKeyUp.remove(blockEvent);
+				}, 0);
+			}
+		});
+	}
+	
+	/**
 	 * If you hit enter from a heading in IE, the resulting P tag below it shares the style property (bad)
 	 * */
+	 /*
 	function removeStylesOnPTagsInheritedFromHeadingTag(ed) {
 		ed.onKeyDown.add(function(ed, event) {
 			function checkInHeadingTag(ed) {
@@ -207,6 +268,8 @@
 			}
 		});
 	}
+	*/
+
 	/**
 	 * Fire a nodeChanged when the selection is changed on WebKit this fixes selection issues on iOS5. It only fires the nodeChange
 	 * event every 50ms since it would other wise update the UI when you type and it hogs the CPU.
@@ -280,13 +343,14 @@
 				removeHrOnBackspace(ed);
 				emptyEditorWhenDeleting(ed);
 				ensureBodyHasRoleApplication(ed);
-				removeStylesOnPTagsInheritedFromHeadingTag(ed)
+				//removeStylesOnPTagsInheritedFromHeadingTag(ed)
 			}
 
 			// Gecko
 			if (tinymce.isGecko) {
 				removeHrOnBackspace(ed);
 				focusBody(ed);
+				removeStylesWhenDeletingAccrossBlockElements(ed);
 			}
 		}
 	});

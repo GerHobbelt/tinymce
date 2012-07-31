@@ -16,7 +16,6 @@
 		isIE = tinymce.isIE,
 		Entities = tinymce.html.Entities,
 		simpleSelectorRe = /^([a-z0-9],?)+$/i,
-		blockElementsMap = tinymce.html.Schema.blockElementsMap,
 		whiteSpaceRegExp = /^[ \t\r\n]*$/;
 
 	/**
@@ -59,7 +58,7 @@
 		 * @param {settings} s Optional settings collection.
 		 */
 		DOMUtils : function(d, s) {
-			var t = this, globalStyle, name;
+			var t = this, globalStyle, name, blockElementsMap;
 
 			t.doc = d;
 			t.win = window;
@@ -90,23 +89,85 @@
 				}
 			}
 
-			if (isIE && s.schema) {
+			t.fixDoc(d);
+			t.events = s.ownEvents ? new tinymce.dom.EventUtils(s.proxy) : tinymce.dom.Event;
+			tinymce.addUnload(t.destroy, t);
+			blockElementsMap = s.schema ? s.schema.getBlockElements() : {};
+
+			/**
+			 * Returns true/false if the specified element is a block element or not.
+			 *
+			 * @method isBlock
+			 * @param {Node/String} node Element/Node to check.
+			 * @return {Boolean} True/False state if the node is a block element or not.
+			 */
+			t.isBlock = function(node) {
+				// This function is called in module pattern style since it might be executed with the wrong this scope
+				var type = node.nodeType;
+
+				// If it's a node then check the type and use the nodeName
+				if (type)
+					return !!(type === 1 && blockElementsMap[node.nodeName]);
+
+				return !!blockElementsMap[node];
+			};
+		},
+
+		fixDoc: function(doc) {
+			var settings = this.settings, name;
+
+			if (isIE && settings.schema) {
 				// Add missing HTML 4/5 elements to IE
 				('abbr article aside audio canvas ' +
 				'details figcaption figure footer ' +
 				'header hgroup mark menu meter nav ' +
 				'output progress section summary ' +
 				'time video').replace(/\w+/g, function(name) {
-					d.createElement(name);
+					doc.createElement(name);
 				});
 
 				// Create all custom elements
-				for (name in s.schema.getCustomElements()) {
-					d.createElement(name);
+				for (name in settings.schema.getCustomElements()) {
+					doc.createElement(name);
 				}
 			}
+		},
 
-			tinymce.addUnload(t.destroy, t);
+		clone: function(node, deep) {
+			var self = this, clone, doc;
+
+			// TODO: Add feature detection here in the future
+			if (!isIE || node.nodeType !== 1 || deep) {
+				return node.cloneNode(deep);
+			}
+
+			doc = self.doc;
+
+			// Make a HTML5 safe shallow copy
+			if (!deep) {
+				clone = doc.createElement(node.nodeName);
+
+				// Copy attribs
+				each(self.getAttribs(node), function(attr) {
+					self.setAttrib(clone, attr.nodeName, self.getAttrib(node, attr.nodeName));
+				});
+
+				return clone;
+			}
+/*
+			// Setup HTML5 patched document fragment
+			if (!self.frag) {
+				self.frag = doc.createDocumentFragment();
+				self.fixDoc(self.frag);
+			}
+
+			// Make a deep copy by adding it to the document fragment then removing it this removed the :section
+			clone = doc.createElement('div');
+			self.frag.appendChild(clone);
+			clone.innerHTML = node.outerHTML;
+			self.frag.removeChild(clone);
+*/
+			return clone.firstChild;
 		},
 
 		/**
@@ -1301,23 +1362,6 @@
 		},
 
 		/**
-		 * Returns true/false if the specified element is a block element or not.
-		 *
-		 * @method isBlock
-		 * @param {Node/String} node Element/Node to check.
-		 * @return {Boolean} True/False state if the node is a block element or not.
-		 */
-		isBlock : function(node) {
-			var type = node.nodeType;
-
-			// If it's a node then check the type and use the nodeName
-			if (type)
-				return !!(type === 1 && blockElementsMap[node.nodeName]);
-
-			return !!blockElementsMap[node];
-		},
-
-		/**
 		 * Replaces the specified element or elements with the specified element, the new element will
 		 * be cloned if multiple inputs elements are passed.
 		 *
@@ -1580,7 +1624,7 @@
 
 			node = node.firstChild;
 			if (node) {
-				walker = new tinymce.dom.TreeWalker(node);
+				walker = new tinymce.dom.TreeWalker(node, node.parentNode);
 				elements = elements || self.schema ? self.schema.getNonEmptyElements() : null;
 
 				do {
@@ -1634,10 +1678,7 @@
 		destroy : function(s) {
 			var t = this;
 
-			if (t.events)
-				t.events.destroy();
-
-			t.win = t.doc = t.root = t.events = null;
+			t.win = t.doc = t.root = t.events = t.frag = null;
 
 			// Manual destroy then remove unload handler
 			if (!s)
@@ -1791,12 +1832,7 @@
 		 * @return {function} Function callback handler the same as the one passed in.
 		 */
 		bind : function(target, name, func, scope) {
-			var t = this;
-
-			if (!t.events)
-				t.events = new tinymce.dom.EventUtils();
-
-			return t.events.add(target, name, func, scope || this);
+			return this.events.add(target, name, func, scope || this);
 		},
 
 		/**
@@ -1809,12 +1845,20 @@
 		 * @return {bool/Array} Bool state if true if the handler was removed or an array with states if multiple elements where passed in.
 		 */
 		unbind : function(target, name, func) {
-			var t = this;
+			return this.events.remove(target, name, func);
+		},
 
-			if (!t.events)
-				t.events = new tinymce.dom.EventUtils();
-
-			return t.events.remove(target, name, func);
+		/**
+		 * Fires the specified event name with object on target.
+		 *
+		 * @method fire
+		 * @param {Node/Document/Window} target Target element or object to fire event on.
+		 * @param {String} name Name of the event to fire.
+		 * @param {Object} evt Event object to send.
+		 * @return {Event} Event object.
+		 */
+		fire : function(target, name, evt) {
+			return this.events.fire(target, name, evt);
 		},
 
 		// #ifdef debug
