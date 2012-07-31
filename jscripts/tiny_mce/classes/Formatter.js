@@ -773,9 +773,8 @@
 					if (startContainer != endContainer) {
 						// WebKit will render the table incorrectly if we wrap a TD in a SPAN so lets see if the can use the first child instead
 						// This will happen if you tripple click a table cell and use remove formatting
-						node = startContainer.firstChild;
-						if (startContainer.nodeName == "TD" && node) {
-							startContainer = node;
+						if (/^(TR|TD)$/.test(startContainer.nodeName) && startContainer.firstChild) {
+							startContainer = (startContainer.nodeName == "TD" ? startContainer.firstChild : startContainer.firstChild.firstChild) || startContainer;
 						}
 
 						// Wrap start/end nodes in span element since these might be cloned/moved
@@ -2103,6 +2102,15 @@
 					if (keyCode == 8 || keyCode == 37 || keyCode == 39) {
 						removeCaretContainer(getParentCaretContainer(selection.getStart()));
 					}
+				});
+
+				// Remove bogus state if they got filled by contents using editor.selection.setContent
+				selection.onSetContent.add(function() {
+					dom.getParent(selection.getStart(), function(node) {
+						if (node.id !== caretContainerId && dom.getAttrib(node, 'data-mce-bogus') && !dom.isEmpty(node)) {
+							dom.setAttrib(node, 'data-mce-bogus', null);
+						}
+					});
 				});
 
 				self._hasCaretEvents = true;
