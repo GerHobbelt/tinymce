@@ -95,8 +95,8 @@
 				inline_styles : TRUE,
 				convert_fonts_to_spans : TRUE,
 				indent : 'simple',
-				indent_before : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside,figure',
-				indent_after : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside,figure',
+				indent_before : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside,figure,option,optgroup,datalist',
+				indent_after : 'p,h1,h2,h3,h4,h5,h6,blockquote,div,title,style,pre,script,td,ul,li,area,table,thead,tfoot,tbody,tr,section,article,hgroup,aside,figure,option,optgroup,datalist',
 				validate : TRUE,
 				entity_encoding : 'named',
 				url_converter : self.convertURL,
@@ -221,6 +221,10 @@
 			if (!/TEXTAREA|INPUT/i.test(t.getElement().nodeName) && s.hidden_input && DOM.getParent(id, 'form'))
 				DOM.insertAfter(DOM.create('input', {type : 'hidden', name : id}), id);
 
+			// Hide target element early to prevent content flashing
+			t.orgVisibility = t.getElement().style.visibility;
+			t.getElement().style.visibility = 'hidden';
+
 			/**
 			 * Window manager reference, use this to open new windows and dialogs.
 			 *
@@ -301,7 +305,7 @@
 				if (s.language && s.language_load !== false)
 					sl.add(tinymce.baseURL + '/langs/' + s.language + '.js');
 
-				if (s.theme && s.theme.charAt(0) != '-' && !ThemeManager.urls[s.theme])
+				if (s.theme && typeof s.theme != "function" && s.theme.charAt(0) != '-' && !ThemeManager.urls[s.theme])
 					ThemeManager.load(s.theme, 'themes/' + s.theme + '/editor_template' + tinymce.suffix + '.js');
 
 				each(explode(s.plugins), function(p) {
@@ -358,13 +362,18 @@
 			 * tinyMCE.activeEditor.theme.someMethod();
 			 */
 			if (s.theme) {
-				s.theme = s.theme.replace(/-/, '');
-				o = ThemeManager.get(s.theme);
-				t.theme = new o();
+				if (typeof s.theme != "function") {
+					s.theme = s.theme.replace(/-/, '');
+					o = ThemeManager.get(s.theme);
+					t.theme = new o();
 
-				if (t.theme.init)
-					t.theme.init(t, ThemeManager.urls[s.theme] || tinymce.documentBaseURL.replace(/\/$/, ''));
+					if (t.theme.init)
+						t.theme.init(t, ThemeManager.urls[s.theme] || tinymce.documentBaseURL.replace(/\/$/, ''));
+				} else {
+					t.theme = s.theme;
+				}
 			}
+
 			function initPlugin(p) {
 				var c = PluginManager.get(p), u = PluginManager.urls[p] || tinymce.documentBaseURL.replace(/\/$/, ''), po;
 				if (c && tinymce.inArray(initializedPlugins,p) === -1) {
@@ -418,25 +427,53 @@
 
 			// Measure box
 			if (s.render_ui && t.theme) {
-				w = s.width || e.style.width || e.offsetWidth;
-				h = s.height || e.style.height || e.offsetHeight;
 				t.orgDisplay = e.style.display;
-				re = /^[0-9\.]+(|px)$/i;
 
-				if (re.test('' + w))
-					w = Math.max(parseInt(w, 10) + (o.deltaWidth || 0), 100);
+				if (typeof s.theme != "function") {
+					w = s.width || e.style.width || e.offsetWidth;
+					h = s.height || e.style.height || e.offsetHeight;
+					re = /^[0-9\.]+(|px)$/i;
 
-				if (re.test('' + h))
-					h = Math.max(parseInt(h, 10) + (o.deltaHeight || 0), 100);
+					if (re.test('' + w))
+						w = Math.max(parseInt(w, 10) + (o.deltaWidth || 0), 100);
 
-				// Render UI
-				o = t.theme.renderUI({
-					targetNode : e,
-					width : w,
-					height : h,
-					deltaWidth : s.delta_width,
-					deltaHeight : s.delta_height
-				});
+					if (re.test('' + h))
+						h = Math.max(parseInt(h, 10) + (o.deltaHeight || 0), 100);
+
+					// Render UI
+					o = t.theme.renderUI({
+						targetNode : e,
+						width : w,
+						height : h,
+						deltaWidth : s.delta_width,
+						deltaHeight : s.delta_height
+					});
+
+					// Resize editor
+					DOM.setStyles(o.sizeContainer || o.editorContainer, {
+						width : w,
+						height : h
+					});
+
+					h = (o.iframeHeight || h) + (typeof(h) == 'number' ? (o.deltaHeight || 0) : '');
+					if (h < 100)
+						h = 100;
+				} else {
+					o = s.theme(t, e);
+
+					// Convert element type to id:s
+					if (o.editorContainer.nodeType) {
+						o.editorContainer = o.editorContainer.id = o.editorContainer.id || t.id + "_parent";
+					}
+
+					// Convert element type to id:s
+					if (o.iframeContainer.nodeType) {
+						o.iframeContainer = o.iframeContainer.id = o.iframeContainer.id || t.id + "_iframecontainer";
+					}
+
+					// Use specified iframe height or the targets offsetHeight
+					h = o.iframeHeight || e.offsetHeight;
+				}
 
 				t.editorContainer = o.editorContainer;
 			}
@@ -457,16 +494,6 @@
 			// User specified a document.domain value
 			if (document.domain && location.hostname != document.domain)
 				tinymce.relaxedDomain = document.domain;
-
-			// Resize editor
-			DOM.setStyles(o.sizeContainer || o.editorContainer, {
-				width : w,
-				height : h
-			});
-
-			h = (o.iframeHeight || h) + (typeof(h) == 'number' ? (o.deltaHeight || 0) : '');
-			if (h < 100)
-				h = 100;
 
 			t.iframeHTML = s.doctype + '<html><head xmlns="http://www.w3.org/1999/xhtml">';
 
@@ -526,7 +553,14 @@
 			});
 
 			t.contentAreaContainer = o.iframeContainer;
-			DOM.get(o.editorContainer).style.display = t.orgDisplay;
+
+			if (o.editorContainer) {
+				DOM.get(o.editorContainer).style.display = t.orgDisplay;
+			}
+
+			// Restore visibility on target element
+			e.style.visibility = t.orgVisibility;
+
 			DOM.get(t.id).style.display = 'none';
 			DOM.setAttrib(t.id, 'aria-hidden', true);
 
@@ -1736,14 +1770,16 @@
 						return;
 
 					case 'A':
-						value = dom.getAttrib(elm, 'name');
-						cls = 'mceItemAnchor';
+						if (!elm.href) {
+							value = dom.getAttrib(elm, 'name') || elm.id;
+							cls = 'mceItemAnchor';
 
-						if (value) {
-							if (self.hasVisual)
-								dom.addClass(elm, cls);
-							else
-								dom.removeClass(elm, cls);
+							if (value) {
+								if (self.hasVisual)
+									dom.addClass(elm, cls);
+								else
+									dom.removeClass(elm, cls);
+							}
 						}
 
 						return;
