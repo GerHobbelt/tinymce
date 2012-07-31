@@ -1,11 +1,11 @@
 /**
  * Selection.js
  *
- * Copyright 2009, Moxiecode Systems AB
+ * Copyright, Moxiecode Systems AB
  * Released under LGPL License.
  *
- * License: http://tinymce.moxiecode.com/license
- * Contributing: http://tinymce.moxiecode.com/contributing
+ * License: http://www.tinymce.com/license
+ * Contributing: http://www.tinymce.com/contributing
  */
 
 (function(tinymce) {
@@ -14,7 +14,7 @@
 	};
 
 	// Shorten names
-	var is = tinymce.is, isIE = tinymce.isIE, each = tinymce.each;
+	var is = tinymce.is, isIE = tinymce.isIE, each = tinymce.each, TreeWalker = tinymce.dom.TreeWalker;
 
 	/**
 	 * This class handles text and control selection it's an crossbrowser utility class.
@@ -197,7 +197,7 @@
 				} else {
 					rng.deleteContents();
 
-					if (doc.body.childNodes.length == 0) {
+					if (doc.body.childNodes.length === 0) {
 						doc.body.innerHTML = content;
 					} else {
 						// createContextualFragment doesn't exists in IE 9 DOMRanges
@@ -364,46 +364,46 @@
 				return index;
 			};
 
-			if (type == 2) {
-				function getLocation() {
-					var rng = t.getRng(true), root = dom.getRoot(), bookmark = {};
+			function getLocation() {
+				var rng = t.getRng(true), root = dom.getRoot(), bookmark = {};
 
-					function getPoint(rng, start) {
-						var container = rng[start ? 'startContainer' : 'endContainer'],
-							offset = rng[start ? 'startOffset' : 'endOffset'], point = [], node, childNodes, after = 0;
+				function getPoint(rng, start) {
+					var container = rng[start ? 'startContainer' : 'endContainer'],
+						offset = rng[start ? 'startOffset' : 'endOffset'], point = [], node, childNodes, after = 0;
 
-						if (container.nodeType == 3) {
-							if (normalized) {
-								for (node = container.previousSibling; node && node.nodeType == 3; node = node.previousSibling)
-									offset += node.nodeValue.length;
-							}
-
-							point.push(offset);
-						} else {
-							childNodes = container.childNodes;
-
-							if (offset >= childNodes.length && childNodes.length) {
-								after = 1;
-								offset = Math.max(0, childNodes.length - 1);
-							}
-
-							point.push(t.dom.nodeIndex(childNodes[offset], normalized) + after);
+					if (container.nodeType == 3) {
+						if (normalized) {
+							for (node = container.previousSibling; node && node.nodeType == 3; node = node.previousSibling)
+								offset += node.nodeValue.length;
 						}
 
-						for (; container && container != root; container = container.parentNode)
-							point.push(t.dom.nodeIndex(container, normalized));
+						point.push(offset);
+					} else {
+						childNodes = container.childNodes;
 
-						return point;
-					};
+						if (offset >= childNodes.length && childNodes.length) {
+							after = 1;
+							offset = Math.max(0, childNodes.length - 1);
+						}
 
-					bookmark.start = getPoint(rng, true);
+						point.push(t.dom.nodeIndex(childNodes[offset], normalized) + after);
+					}
 
-					if (!t.isCollapsed())
-						bookmark.end = getPoint(rng);
+					for (; container && container != root; container = container.parentNode)
+						point.push(t.dom.nodeIndex(container, normalized));
 
-					return bookmark;
+					return point;
 				};
 
+				bookmark.start = getPoint(rng, true);
+
+				if (!t.isCollapsed())
+					bookmark.end = getPoint(rng);
+
+				return bookmark;
+			};
+
+			if (type == 2) {
 				if (t.tridentSel)
 					return t.tridentSel.getBookmark(type);
 
@@ -436,7 +436,7 @@
 
 							// Detect the empty space after block elements in IE and move the end back one character <p></p>] becomes <p>]</p>
 							rng.moveToElementText(rng2.parentElement());
-							if (rng.compareEndPoints('StartToEnd', rng2) == 0)
+							if (rng.compareEndPoints('StartToEnd', rng2) === 0)
 								rng2.move('character', -1);
 
 							rng2.pasteHTML('<span data-mce-type="bookmark" id="' + id + '_end" style="' + styles + '">' + chr + '</span>');
@@ -499,44 +499,114 @@
 		moveToBookmark : function(bookmark) {
 			var t = this, dom = t.dom, marker1, marker2, rng, root, startContainer, endContainer, startOffset, endOffset;
 
+			function setEndPoint(start) {
+				var point = bookmark[start ? 'start' : 'end'], i, node, offset, children;
+
+				if (point) {
+					offset = point[0];
+
+					// Find container node
+					for (node = root, i = point.length - 1; i >= 1; i--) {
+						children = node.childNodes;
+
+						if (point[i] > children.length - 1)
+							return;
+
+						node = children[point[i]];
+					}
+
+					// Move text offset to best suitable location
+					if (node.nodeType === 3)
+						offset = Math.min(point[0], node.nodeValue.length);
+
+					// Move element offset to best suitable location
+					if (node.nodeType === 1)
+						offset = Math.min(point[0], node.childNodes.length);
+
+					// Set offset within container node
+					if (start)
+						rng.setStart(node, offset);
+					else
+						rng.setEnd(node, offset);
+				}
+
+				return true;
+			};
+
+			function restoreEndPoint(suffix) {
+				var marker = dom.get(bookmark.id + '_' + suffix), node, idx, next, prev, keep = bookmark.keep;
+
+				if (marker) {
+					node = marker.parentNode;
+
+					if (suffix == 'start') {
+						if (!keep) {
+							idx = dom.nodeIndex(marker);
+						} else {
+							node = marker.firstChild;
+							idx = 1;
+						}
+
+						startContainer = endContainer = node;
+						startOffset = endOffset = idx;
+					} else {
+						if (!keep) {
+							idx = dom.nodeIndex(marker);
+						} else {
+							node = marker.firstChild;
+							idx = 1;
+						}
+
+						endContainer = node;
+						endOffset = idx;
+					}
+
+					if (!keep) {
+						prev = marker.previousSibling;
+						next = marker.nextSibling;
+
+						// Remove all marker text nodes
+						each(tinymce.grep(marker.childNodes), function(node) {
+							if (node.nodeType == 3)
+								node.nodeValue = node.nodeValue.replace(/\uFEFF/g, '');
+						});
+
+						// Remove marker but keep children if for example contents where inserted into the marker
+						// Also remove duplicated instances of the marker for example by a split operation or by WebKit auto split on paste feature
+						while (marker = dom.get(bookmark.id + '_' + suffix))
+							dom.remove(marker, 1);
+
+						// If siblings are text nodes then merge them unless it's Opera since it some how removes the node
+						// and we are sniffing since adding a lot of detection code for a browser with 3% of the market isn't worth the effort. Sorry, Opera but it's just a fact
+						if (prev && next && prev.nodeType == next.nodeType && prev.nodeType == 3 && !tinymce.isOpera) {
+							idx = prev.nodeValue.length;
+							prev.appendData(next.nodeValue);
+							dom.remove(next);
+
+							if (suffix == 'start') {
+								startContainer = endContainer = prev;
+								startOffset = endOffset = idx;
+							} else {
+								endContainer = prev;
+								endOffset = idx;
+							}
+						}
+					}
+				}
+			};
+
+			function addBogus(node) {
+				// Adds a bogus BR element for empty block elements
+				if (dom.isBlock(node) && !node.innerHTML && !isIE)
+					node.innerHTML = '<br data-mce-bogus="1" />';
+
+				return node;
+			};
+
 			if (bookmark) {
 				if (bookmark.start) {
 					rng = dom.createRng();
 					root = dom.getRoot();
-
-					function setEndPoint(start) {
-						var point = bookmark[start ? 'start' : 'end'], i, node, offset, children;
-
-						if (point) {
-							offset = point[0];
-
-							// Find container node
-							for (node = root, i = point.length - 1; i >= 1; i--) {
-								children = node.childNodes;
-
-								if (point[i] > children.length - 1)
-									return;
-
-								node = children[point[i]];
-							}
-
-							// Move text offset to best suitable location
-							if (node.nodeType === 3)
-								offset = Math.min(point[0], node.nodeValue.length);
-
-							// Move element offset to best suitable location
-							if (node.nodeType === 1)
-								offset = Math.min(point[0], node.childNodes.length);
-
-							// Set offset within container node
-							if (start)
-								rng.setStart(node, offset);
-							else
-								rng.setEnd(node, offset);
-						}
-
-						return true;
-					};
 
 					if (t.tridentSel)
 						return t.tridentSel.moveToBookmark(bookmark);
@@ -545,76 +615,6 @@
 						t.setRng(rng);
 					}
 				} else if (bookmark.id) {
-					function restoreEndPoint(suffix) {
-						var marker = dom.get(bookmark.id + '_' + suffix), node, idx, next, prev, keep = bookmark.keep;
-
-						if (marker) {
-							node = marker.parentNode;
-
-							if (suffix == 'start') {
-								if (!keep) {
-									idx = dom.nodeIndex(marker);
-								} else {
-									node = marker.firstChild;
-									idx = 1;
-								}
-
-								startContainer = endContainer = node;
-								startOffset = endOffset = idx;
-							} else {
-								if (!keep) {
-									idx = dom.nodeIndex(marker);
-								} else {
-									node = marker.firstChild;
-									idx = 1;
-								}
-
-								endContainer = node;
-								endOffset = idx;
-							}
-
-							if (!keep) {
-								prev = marker.previousSibling;
-								next = marker.nextSibling;
-
-								// Remove all marker text nodes
-								each(tinymce.grep(marker.childNodes), function(node) {
-									if (node.nodeType == 3)
-										node.nodeValue = node.nodeValue.replace(/\uFEFF/g, '');
-								});
-
-								// Remove marker but keep children if for example contents where inserted into the marker
-								// Also remove duplicated instances of the marker for example by a split operation or by WebKit auto split on paste feature
-								while (marker = dom.get(bookmark.id + '_' + suffix))
-									dom.remove(marker, 1);
-
-								// If siblings are text nodes then merge them unless it's Opera since it some how removes the node
-								// and we are sniffing since adding a lot of detection code for a browser with 3% of the market isn't worth the effort. Sorry, Opera but it's just a fact
-								if (prev && next && prev.nodeType == next.nodeType && prev.nodeType == 3 && !tinymce.isOpera) {
-									idx = prev.nodeValue.length;
-									prev.appendData(next.nodeValue);
-									dom.remove(next);
-
-									if (suffix == 'start') {
-										startContainer = endContainer = prev;
-										startOffset = endOffset = idx;
-									} else {
-										endContainer = prev;
-										endOffset = idx;
-									}
-								}
-							}
-						}
-					};
-
-					function addBogus(node) {
-						// Adds a bogus BR element for empty block elements or just a space on IE since it renders BR elements incorrectly
-						if (dom.isBlock(node) && !node.innerHTML)
-							node.innerHTML = !isIE ? '<br data-mce-bogus="1" />' : ' ';
-
-						return node;
-					};
-
 					// Restore start/end points
 					restoreEndPoint('start');
 					restoreEndPoint('end');
@@ -646,6 +646,32 @@
 		select : function(node, content) {
 			var t = this, dom = t.dom, rng = dom.createRng(), idx;
 
+			function setPoint(node, start) {
+				var walker = new TreeWalker(node, node);
+
+				do {
+					// Text node
+					if (node.nodeType == 3 && tinymce.trim(node.nodeValue).length !== 0) {
+						if (start)
+							rng.setStart(node, 0);
+						else
+							rng.setEnd(node, node.nodeValue.length);
+
+						return;
+					}
+
+					// BR element
+					if (node.nodeName == 'BR') {
+						if (start)
+							rng.setStartBefore(node);
+						else
+							rng.setEndBefore(node);
+
+						return;
+					}
+				} while (node = (start ? walker.next() : walker.prev()));
+			};
+
 			if (node) {
 				idx = dom.nodeIndex(node);
 				rng.setStart(node.parentNode, idx);
@@ -653,32 +679,6 @@
 
 				// Find first/last text node or BR element
 				if (content) {
-					function setPoint(node, start) {
-						var walker = new tinymce.dom.TreeWalker(node, node);
-
-						do {
-							// Text node
-							if (node.nodeType == 3 && tinymce.trim(node.nodeValue).length != 0) {
-								if (start)
-									rng.setStart(node, 0);
-								else
-									rng.setEnd(node, node.nodeValue.length);
-
-								return;
-							}
-
-							// BR element
-							if (node.nodeName == 'BR') {
-								if (start)
-									rng.setStartBefore(node);
-								else
-									rng.setEndBefore(node);
-
-								return;
-							}
-						} while (node = (start ? walker.next() : walker.prev()));
-					};
-
 					setPoint(node, 1);
 					setPoint(node);
 				}
@@ -865,6 +865,14 @@
 		getNode : function() {
 			var t = this, rng = t.getRng(), sel = t.getSel(), elm, start = rng.startContainer, end = rng.endContainer;
 
+			function skipEmptyTextNodes(n, forwards) {
+				var orig = n;
+				while (n && n.nodeType === 3 && n.length === 0) {
+					n = forwards ? n.nextSibling : n.previousSibling;
+				}
+				return n || orig;
+			};
+
 			// Range maybe lost after the editor is made visible again
 			if (!rng)
 				return t.dom.getRoot();
@@ -888,13 +896,6 @@
 					// Handle cases where the selection is immediately wrapped around a node and return that node instead of it's parent.
 					// This happens when you double click an underlined word in FireFox.
 					if (start.nodeType === 3 && end.nodeType === 3) {
-						function skipEmptyTextNodes(n, forwards) {
-							var orig = n;
-							while (n && n.nodeType === 3 && n.length === 0) {
-								n = forwards ? n.nextSibling : n.previousSibling;
-							}
-							return n || orig;
-						}
 						if (start.length === rng.startOffset) {
 							start = skipEmptyTextNodes(start.nextSibling, true);
 						} else {
@@ -932,7 +933,7 @@
 			if (sb && eb && sb != eb) {
 				n = sb;
 
-				var walker = new tinymce.dom.TreeWalker(sb, dom.getRoot());
+				var walker = new TreeWalker(sb, dom.getRoot());
 				while ((n = walker.next()) && n != eb) {
 					if (dom.isBlock(n))
 						bl.push(n);
@@ -946,22 +947,48 @@
 		},
 
 		normalize : function() {
-			var self = this, rng, normalized;
-
-			// TODO:
-			// Retain selection direction.
-			// Lean left/right on Gecko for inline elements.
-			// Run this on mouse up/key up when the user manually moves the selection
-
-			// Normalize only on non IE browsers for now
-			if (tinymce.isIE)
-				return;
+			var self = this, rng, normalized, collapsed;
 
 			function normalizeEndPoint(start) {
-				var container, offset, walker, dom = self.dom, body = dom.getRoot(), node;
+				var container, offset, walker, dom = self.dom, body = dom.getRoot(), node, nonEmptyElementsMap, nodeName;
+
+				// Walks the dom left/right to find a suitable text node to move the endpoint into
+				// It will only walk within the current parent block or body and will stop if it hits a block or a BR/IMG
+				function findTextNodeRelative(left, startNode) {
+					var walker, lastInlineElement;
+
+					startNode = startNode || container;
+					walker = new TreeWalker(startNode, dom.getParent(startNode.parentNode, dom.isBlock) || body);
+
+					// Walk left until we hit a text node we can move to or a block/br/img
+					while (node = walker[left ? 'prev' : 'next']()) {
+						// Found text node that has a length
+						if (node.nodeType === 3 && node.nodeValue.length > 0) {
+							container = node;
+							offset = left ? node.nodeValue.length : 0;
+							normalized = true;
+							return;
+						}
+
+						// Break if we find a block or a BR/IMG/INPUT etc
+						if (dom.isBlock(node) || nonEmptyElementsMap[node.nodeName.toLowerCase()]) {
+							return;
+						}
+
+						lastInlineElement = node;
+					}
+
+					// Only fetch the last inline element when in caret mode for now
+					if (collapsed && lastInlineElement) {
+						container = lastInlineElement;
+						normalized = true;
+						offset = 0;
+					}
+				};
 
 				container = rng[(start ? 'start' : 'end') + 'Container'];
 				offset = rng[(start ? 'start' : 'end') + 'Offset'];
+				nonEmptyElementsMap = dom.schema.getNonEmptyElements();
 
 				// If the container is a document move it to the body element
 				if (container.nodeType === 9) {
@@ -970,8 +997,18 @@
 				}
 
 				// If the container is body try move it into the closest text node or position
-				// TODO: Add more logic here to handle element selection cases
 				if (container === body) {
+					// If start is before/after a image, table etc
+					if (start) {
+						node = container.childNodes[offset > 0 ? offset - 1 : 0];
+						if (node) {
+							nodeName = node.nodeName.toLowerCase();
+							if (nonEmptyElementsMap[node.nodeName] || node.nodeName == "TABLE") {
+								return;
+							}
+						}
+					}
+
 					// Resolve the index
 					if (container.hasChildNodes()) {
 						container = container.childNodes[Math.min(!start && offset > 0 ? offset - 1 : offset, container.childNodes.length - 1)];
@@ -981,18 +1018,19 @@
 						if (container.hasChildNodes()) {
 							// Walk the DOM to find a text node to place the caret at or a BR
 							node = container;
-							walker = new tinymce.dom.TreeWalker(container, body);
+							walker = new TreeWalker(container, body);
+
 							do {
 								// Found a text node use that position
-								if (node.nodeType === 3) {
-									offset = start ? 0 : node.nodeValue.length - 1;
+								if (node.nodeType === 3 && node.nodeValue.length > 0) {
+									offset = start ? 0 : node.nodeValue.length;
 									container = node;
 									normalized = true;
 									break;
 								}
 
 								// Found a BR/IMG element that we can place the caret before
-								if (/^(BR|IMG)$/.test(node.nodeName)) {
+								if (nonEmptyElementsMap[node.nodeName.toLowerCase()]) {
 									offset = dom.nodeIndex(node);
 									container = node.parentNode;
 
@@ -1009,21 +1047,60 @@
 					}
 				}
 
+
+				// Lean the caret to the left if possible
+				if (collapsed) {
+					// So this: <b>x</b><i>|x</i>
+					// Becomes: <b>x|</b><i>x</i>
+					// Seems that only gecko has issues with this
+					if (container.nodeType === 3 && offset === 0) {
+						findTextNodeRelative(true);
+					}
+
+					// Lean left into empty inline elements when the caret is before a BR
+					// So this: <i><b></b><i>|<br></i>
+					// Becomes: <i><b>|</b><i><br></i>
+					// Seems that only gecko has issues with this
+					if (container.nodeType === 1 && container.childNodes[offset] && container.childNodes[offset].nodeName === 'BR') {
+						findTextNodeRelative(true, container.childNodes[offset]);
+					}
+				}
+
+				// Lean the start of the selection right if possible
+				// So this: x[<b>x]</b>
+				// Becomes: x<b>[x]</b>
+				if (start && !collapsed && container.nodeType === 3 && offset === container.nodeValue.length) {
+					findTextNodeRelative(false);
+				}
+
 				// Set endpoint if it was normalized
 				if (normalized)
 					rng['set' + (start ? 'Start' : 'End')](container, offset);
 			};
 
+			// TODO:
+			// Retain selection direction.
+
+			// Normalize only on non IE browsers for now
+			if (tinymce.isIE)
+				return;
+			
 			rng = self.getRng();
+			collapsed = rng.collapsed;
 
 			// Normalize the end points
 			normalizeEndPoint(true);
 
-			if (!rng.collapsed)
+			if (!collapsed)
 				normalizeEndPoint();
 
 			// Set the selection if it was normalized
 			if (normalized) {
+				// If it was collapsed then make sure it still is
+				if (collapsed) {
+					rng.collapse(true);
+				}
+
 				//console.log(self.dom.dumpRng(rng));
 				self.setRng(rng);
 			}
@@ -1042,9 +1119,6 @@
 		// IE has an issue where you can't select/move the caret by clicking outside the body if the document is in standards mode
 		_fixIESelection : function() {
 			var dom = this.dom, doc = dom.doc, body = doc.body, started, startRng, htmlElm;
-
-			// Make HTML element unselectable since we are going to handle selection by hand
-			doc.documentElement.unselectable = true;
 
 			// Return range from point or null if it failed
 			function rngFromPoint(x, y) {
@@ -1095,6 +1169,9 @@
 				startRng = started = 0;
 			};
 
+			// Make HTML element unselectable since we are going to handle selection by hand
+			doc.documentElement.unselectable = true;
+			
 			// Detect when user selects outside BODY
 			dom.bind(doc, ['mousedown', 'contextmenu'], function(e) {
 				if (e.target.nodeName === 'HTML') {

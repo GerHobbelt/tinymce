@@ -1,11 +1,11 @@
 /**
  * EditorManager.js
  *
- * Copyright 2009, Moxiecode Systems AB
+ * Copyright, Moxiecode Systems AB
  * Released under LGPL License.
  *
- * License: http://tinymce.moxiecode.com/license
- * Contributing: http://tinymce.moxiecode.com/contributing
+ * License: http://www.tinymce.com/license
+ * Contributing: http://www.tinymce.com/contributing
  */
 
 (function(tinymce) {
@@ -18,7 +18,7 @@
 		DOM = tinymce.DOM, Event = tinymce.dom.Event,
 		ThemeManager = tinymce.ThemeManager, PluginManager = tinymce.PluginManager,
 		explode = tinymce.explode,
-		Dispatcher = tinymce.util.Dispatcher, undefined, instanceCounter = 0;
+		Dispatcher = tinymce.util.Dispatcher, undef, instanceCounter = 0;
 
 	// Setup some URLs where the editor API is located and where the document is
 	tinymce.documentBaseURL = window.location.href.replace(/[\?#].*$/, '').replace(/[\/\\][^\/]+$/, '');
@@ -153,6 +153,10 @@
 				return f.apply(s || this, Array.prototype.slice.call(arguments, 2));
 			};
 
+			function hasClass(n, c) {
+				return c.constructor === RegExp ? c.test(n.className) : DOM.hasClass(n, c);
+			};
+
 			s = extend({
 				theme : "simple",
 				language : "en"
@@ -196,10 +200,6 @@
 
 					case "textareas":
 					case "specific_textareas":
-						function hasClass(n, c) {
-							return c.constructor === RegExp ? c.test(n.className) : DOM.hasClass(n, c);
-						};
-
 						each(DOM.select('textarea'), function(elm) {
 							if (s.editor_deselector && hasClass(elm, s.editor_deselector))
 								return;
@@ -277,7 +277,7 @@
 		 * });
 		 */
 		get : function(id) {
-			if (id === undefined)
+			if (id === undef)
 				return this.editors;
 
 			return this.editors[id];
@@ -369,6 +369,12 @@
 		execCommand : function(c, u, v) {
 			var t = this, ed = t.get(v), w;
 
+			function clr() {
+				ed.destroy();
+				w.detachEvent('onunload', clr);
+				w = w.tinyMCE = w.tinymce = null; // IE leak
+			};
+
 			// Manager commands
 			switch (c) {
 				case "mceFocus":
@@ -397,12 +403,6 @@
 
 					// Fix IE memory leaks
 					if (tinymce.isIE) {
-						function clr() {
-							ed.destroy();
-							w.detachEvent('onunload', clr);
-							w = w.tinyMCE = w.tinymce = null; // IE leak
-						};
-
 						w.attachEvent('onunload', clr);
 					}
 

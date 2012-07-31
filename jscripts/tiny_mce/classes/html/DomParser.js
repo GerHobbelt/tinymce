@@ -1,11 +1,11 @@
 /**
  * DomParser.js
  *
- * Copyright 2010, Moxiecode Systems AB
+ * Copyright, Moxiecode Systems AB
  * Released under LGPL License.
  *
- * License: http://tinymce.moxiecode.com/license
- * Contributing: http://tinymce.moxiecode.com/contributing
+ * License: http://www.tinymce.com/license
+ * Contributing: http://www.tinymce.com/contributing
  */
 
 (function(tinymce) {
@@ -529,8 +529,8 @@
 		// these elements and keep br elements that where intended to be there intact
 		if (settings.remove_trailing_brs) {
 			self.addNodeFilter('br', function(nodes, name) {
-				var i, l = nodes.length, node, blockElements = schema.getBlockElements(),
-					nonEmptyElements = schema.getNonEmptyElements(), parent, prev, prevName;
+				var i, l = nodes.length, node, blockElements = tinymce.extend({}, schema.getBlockElements()),
+					nonEmptyElements = schema.getNonEmptyElements(), parent, lastParent, prev, prevName;
 
 				// Remove brs from body element as well
 				blockElements.body = 1;
@@ -541,7 +541,7 @@
 					parent = node.parent;
 
 					if (blockElements[node.parent.name] && node === parent.lastChild) {
-						// Loop all nodes to the right of the current node and check for other BR elements
+						// Loop all nodes to the left of the current node and check for other BR elements
 						// excluding bookmarks since they are invisible
 						prev = node.prev;
 						while (prev) {
@@ -579,6 +579,46 @@
 								}
 							}
 						}
+					} else {
+						// Replaces BR elements inside inline elements like <p><b><i><br></i></b></p> so they become <p><b><i>&nbsp;</i></b></p> 
+						lastParent = node;
+						while (parent.firstChild === lastParent && parent.lastChild === lastParent) {
+							lastParent = parent;
+
+							if (blockElements[parent.name]) {
+								break;
+							}
+
+							parent = parent.parent;
+						}
+
+						if (lastParent === parent) {
+							textNode = new tinymce.html.Node('#text', 3);
+							textNode.value = '\u00a0';
+							node.replace(textNode);
+						}
+					}
+				}
+			});
+		}
+
+		// Force anchor names closed, unless the setting "allow_html_in_named_anchor" is explicitly included.
+		if (!settings.allow_html_in_named_anchor) {
+			self.addAttributeFilter('name', function(nodes, name) {
+				var i = nodes.length, sibling, prevSibling, parent, node;
+
+				while (i--) {
+					node = nodes[i];
+					if (node.name === 'a' && node.firstChild) {
+						parent = node.parent;
+
+						// Move children after current node
+						sibling = node.lastChild;
+						do {
+							prevSibling = sibling.prev;
+							parent.insert(sibling, node);
+							sibling = prevSibling;
+						} while (sibling);
 					}
 				}
 			});

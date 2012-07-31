@@ -1,11 +1,11 @@
 /**
  * EnterKey.js
  *
- * Copyright 2012, Moxiecode Systems AB
+ * Copyright, Moxiecode Systems AB
  * Released under LGPL License.
  *
- * License: http://tinymce.moxiecode.com/license
- * Contributing: http://tinymce.moxiecode.com/contributing
+ * License: http://www.tinymce.com/license
+ * Contributing: http://www.tinymce.com/contributing
  */
 
 (function(tinymce) {
@@ -18,16 +18,21 @@
 		var dom = editor.dom, selection = editor.selection, settings = editor.settings, undoManager = editor.undoManager;
 
 		function handleEnterKey(evt) {
-			var rng = selection.getRng(true), tmpRng, container, offset, parentBlock, newBlock, fragment, containerBlock, parentBlockName, containerBlockName, newBlockName;
+			var rng = selection.getRng(true), tmpRng, editableRoot, container, offset, parentBlock, documentMode,
+				newBlock, fragment, containerBlock, parentBlockName, containerBlockName, newBlockName, isAfterLastNodeInContainer;
 
 			// Returns true if the block can be split into two blocks or not
 			function canSplitBlock(node) {
-				return node && dom.isBlock(node) && !/^(TD|TH|CAPTION)$/.test(node.nodeName) && !/^(fixed|absolute)/i.test(node.style.position);
+				return node &&
+					dom.isBlock(node) &&
+					!/^(TD|TH|CAPTION)$/.test(node.nodeName) &&
+					!/^(fixed|absolute)/i.test(node.style.position) && 
+					dom.getContentEditable(node) !== "true";
 			};
 
 			// Moves the caret to a suitable position within the root for example in the first non pure whitespace text node or before an image
 			function moveToCaretPosition(root) {
-				var walker, node, rng, y, viewPort, lastNode = root;
+				var walker, node, rng, y, viewPort, lastNode = root, tempElm;
 
 				rng = dom.createRng();
 
@@ -57,8 +62,19 @@
 					}
 				} else {
 					if (root.nodeName == 'BR') {
-						rng.setStartAfter(root);
-						rng.setEndAfter(root);
+						if (root.nextSibling && dom.isBlock(root.nextSibling)) {
+							// Trick on older IE versions to render the caret before the BR between two lists
+							if (!documentMode || documentMode < 9) {
+								tempElm = dom.create('br');
+								root.parentNode.insertBefore(tempElm, root);
+							}
+
+							rng.setStartBefore(root);
+							rng.setEndBefore(root);
+						} else {
+							rng.setStartAfter(root);
+							rng.setEndAfter(root);
+						}
 					} else {
 						rng.setStart(root, 0);
 						rng.setEnd(root, 0);
@@ -66,6 +82,9 @@
 				}
 
 				selection.setRng(rng);
+
+				// Remove tempElm created for old IE:s
+				dom.remove(tempElm);
 
 				viewPort = dom.getViewPort(editor.getWin());
 
@@ -81,24 +100,26 @@
 			function createNewBlock(name) {
 				var node = container, block, clonedNode, caretNode;
 
-				block = name ? dom.create(name) : parentBlock.cloneNode(false);
+				block = name || parentBlockName == "TABLE" ? dom.create(name || newBlockName) : parentBlock.cloneNode(false);
 				caretNode = block;
 
 				// Clone any parent styles
-				do {
-					if (/^(SPAN|STRONG|B|EM|I|FONT|STRIKE|U)$/.test(node.nodeName)) {
-						clonedNode = node.cloneNode(false);
-						dom.setAttrib(clonedNode, 'id', ''); // Remove ID since it needs to be document unique
+				if (settings.keep_styles !== false) {
+					do {
+						if (/^(SPAN|STRONG|B|EM|I|FONT|STRIKE|U)$/.test(node.nodeName)) {
+							clonedNode = node.cloneNode(false);
+							dom.setAttrib(clonedNode, 'id', ''); // Remove ID since it needs to be document unique
 
-						if (block.hasChildNodes()) {
-							clonedNode.appendChild(block.firstChild);
-							block.appendChild(clonedNode);
-						} else {
-							caretNode = clonedNode;
-							block.appendChild(clonedNode);
+							if (block.hasChildNodes()) {
+								clonedNode.appendChild(block.firstChild);
+								block.appendChild(clonedNode);
+							} else {
+								caretNode = clonedNode;
+								block.appendChild(clonedNode);
+							}
 						}
-					}
-				} while (node = node.parentNode);
+					} while (node = node.parentNode);
+				}
 
 				// BR is needed in empty blocks on non IE browsers
 				if (!tinymce.isIE) {
@@ -110,11 +131,21 @@
 
 			// Returns true/false if the caret is at the start/end of the parent block element
 			function isCaretAtStartOrEndOfBlock(start) {
-				var walker, node;
+				var walker, node, name;
 
 				// Caret is in the middle of a text node like "a|b"
 				if (container.nodeType == 3 && (start ? offset > 0 : offset < container.nodeValue.length)) {
 					return false;
+				}
+
+				// If after the last element in block node edge case for #5091
+				if (container.parentNode == parentBlock && isAfterLastNodeInContainer && !start) {
+					return true;
+				}
+
+				// Caret can be before/after a table
+				if (container.nodeName === "TABLE" || (container.previousSibling && container.previousSibling.nodeName == "TABLE")) {
+					return (isAfterLastNodeInContainer && !start) || (!isAfterLastNodeInContainer && start);
 				}
 
 				// Walk the DOM and look for text nodes or non empty elements
@@ -141,15 +172,15 @@
 
 			// Wraps any text nodes or inline elements in the specified forced root block name
 			function wrapSelfAndSiblingsInDefaultBlock(container, offset) {
-				var newBlock, parentBlock, startNode, node, next;
+				var newBlock, parentBlock, startNode, node, next, blockName = newBlockName || 'P';
 
 				// Not in a block element or in a table cell or caption
 				parentBlock = dom.getParent(container, dom.isBlock);
-				if (newBlockName && !evt.shiftKey && (!parentBlock || !canSplitBlock(parentBlock))) {
-					parentBlock = parentBlock || dom.getRoot();
+				if (!parentBlock || !canSplitBlock(parentBlock)) {
+					parentBlock = parentBlock || editableRoot;
 
 					if (!parentBlock.hasChildNodes()) {
-						newBlock = dom.create(newBlockName);
+						newBlock = dom.create(blockName);
 						parentBlock.appendChild(newBlock);
 						rng.setStart(newBlock, 0);
 						rng.setEnd(newBlock, 0);
@@ -169,7 +200,7 @@
 					}
 
 					if (startNode) {
-						newBlock = dom.create(newBlockName);
+						newBlock = dom.create(blockName);
 						startNode.parentNode.insertBefore(newBlock, startNode);
 
 						// Start wrapping until we hit a block
@@ -248,7 +279,7 @@
 			
 			// Inserts a BR element if the forced_root_block option is set to false or empty string
 			function insertBr() {
-				var brElm, extraBr, documentMode;
+				var brElm, extraBr;
 
 				if (container && container.nodeType == 3 && offset >= container.nodeValue.length) {
 					// Insert extra BR element at the end block elements
@@ -265,7 +296,6 @@
 				rng.insertNode(brElm);
 
 				// Rendering modes below IE8 doesn't display BR elements in PRE unless we have a \n before it
-				documentMode = dom.doc.documentMode;
 				if (tinymce.isIE && parentBlockName == 'PRE' && (!documentMode || documentMode < 8)) {
 					brElm.parentNode.insertBefore(dom.doc.createTextNode('\r'), brElm);
 				}
@@ -292,7 +322,23 @@
 					node = node.firstChild;
 				} while (node);
 			};
-		
+
+			function getEditableRoot(node) {
+				var root = dom.getRoot(), parent, editableRoot;
+
+				// Get all parents until we hit a non editable parent or the root
+				parent = node;
+				while (parent !== root && dom.getContentEditable(parent) !== "false") {
+					if (dom.getContentEditable(parent) === "true") {
+						editableRoot = parent;
+					}
+
+					parent = parent.parentNode;
+				}
+				
+				return parent !== root ? editableRoot : root;
+			};
+
 			// Delete any selected contents
 			if (!rng.collapsed) {
 				editor.execCommand('Delete');
@@ -309,18 +355,40 @@
 			offset = rng.startOffset;
 			newBlockName = settings.forced_root_block;
 			newBlockName = newBlockName ? newBlockName.toUpperCase() : '';
+			documentMode = dom.doc.documentMode;
 
 			// Resolve node index
 			if (container.nodeType == 1 && container.hasChildNodes()) {
+				isAfterLastNodeInContainer = offset > container.childNodes.length - 1;
 				container = container.childNodes[Math.min(offset, container.childNodes.length - 1)] || container;
 				offset = 0;
 			}
 
+			// Get editable root node normaly the body element but sometimes a div or span
+			editableRoot = getEditableRoot(container);
+
+			// If there is no editable root then enter is done inside a contentEditable false element
+			if (!editableRoot) {
+				return;
+			}
+
 			undoManager.beforeChange();
+
+			// If editable root isn't block nor the root of the editor
+			if (!dom.isBlock(editableRoot) && editableRoot != dom.getRoot()) {
+				if (!newBlockName || evt.shiftKey) {
+					insertBr();
+				}
+
+				return;
+			}
 
 			// Wrap the current node and it's sibling in a default block if it's needed.
 			// for example this <td>text|<b>text2</b></td> will become this <td><p>text|<b>text2</p></b></td>
-			container = wrapSelfAndSiblingsInDefaultBlock(container, offset);
+			// This won't happen if root blocks are disabled or the shiftKey is pressed
+			if ((newBlockName && !evt.shiftKey) || (!newBlockName && evt.shiftKey)) {
+				container = wrapSelfAndSiblingsInDefaultBlock(container, offset);
+			}
 
 			// Find parent block and setup empty block paddings
 			parentBlock = dom.getParent(container, dom.isBlock);
