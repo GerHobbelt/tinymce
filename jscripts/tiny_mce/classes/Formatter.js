@@ -56,7 +56,7 @@
 		};
 
 		function isCaretNode(node) {
-			return node.nodeType === 1 && (node.face === 'mceinline' || node.style.fontFamily === 'mceinline');
+			return node.nodeType === 1 && node.id === '_mce_caret';
 		};
 
 		// Public functions
@@ -326,7 +326,7 @@
 
 						// Is it valid to wrap this item
 						if (isValid(wrapName, nodeName) && isValid(parentName, wrapName) &&
-								!(!node_specific && node.nodeType === 3 && node.nodeValue.length === 1 && node.nodeValue.charCodeAt(0) === 65279) && node.id !== '_mce_caret') {
+								!(!node_specific && node.nodeType === 3 && node.nodeValue.length === 1 && node.nodeValue.charCodeAt(0) === 65279) && !isCaretNode(node)) {
 							// Start wrapping
 							if (!currentWrapElm) {
 								// Wrap the node
@@ -1038,8 +1038,8 @@
 				}
 
 				for (;;) {
-					// Stop expanding on block elements or root depending on format
-					if (parent == root || (!format[0].block_expand && isBlock(parent)))
+					// Stop expanding on block elements
+					if (!format[0].block_expand && isBlock(parent))
 						return parent;
 
 					// Walk left/right
@@ -1050,6 +1050,11 @@
 					}
 
 					// Check if we can move up are we at root level or body level
+					if (parent.parentNode == root) {
+						container = parent;
+						break;
+					}
+
 					parent = parent.parentNode;
 				}
 

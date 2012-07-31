@@ -49,7 +49,7 @@
 					}
 				}
 
-				// Do the backspace/delete actiopn
+				// Do the backspace/delete action
 				ed.getDoc().execCommand(isDelete ? 'ForwardDelete' : 'Delete', false, null);
 
 				// Find all odd apple-style-spans
@@ -75,17 +75,36 @@
 	 * like a <h1></h1> or <p></p> and then forcefully remove all contents.
 	 */
 	function emptyEditorWhenDeleting(ed) {
-		ed.onKeyUp.add(function(ed, e) {
-			var keyCode = e.keyCode;
 
+		function serializeRng(rng) {
+			var body = ed.dom.create("body");
+			var contents = rng.cloneContents();
+			body.appendChild(contents);
+			return ed.selection.serializer.serialize(body, {format: 'html'});
+		}
+
+		function allContentsSelected(rng) {
+			var selection = serializeRng(rng);
+
+			var allRng = ed.dom.createRng();
+			allRng.selectNode(ed.getBody());
+
+			var allSelection = serializeRng(allRng);
+			return selection === allSelection;
+		}
+
+		ed.onKeyDown.addToTop(function(ed, e) {
+			var keyCode = e.keyCode;
 			if (keyCode == DELETE || keyCode == BACKSPACE) {
-				if (ed.dom.isEmpty(ed.getBody())) {
+				var rng = ed.selection.getRng(true);
+				if (!rng.collapsed && allContentsSelected(rng)) {
 					ed.setContent('', {format : 'raw'});
 					ed.nodeChanged();
-					return;
+					e.preventDefault();
 				}
 			}
 		});
+
 	};
 
 	/**
@@ -220,8 +239,29 @@
 		document.body.setAttribute("role", "application");
 	}
 	
+	/**
+	 * Backspacing into a table behaves differently depending upon browser type.
+	 * Therefore, disable Backspace when cursor immediately follows a table.
+	 */
+
+	function disableBackspaceIntoATable(ed) {
+		ed.onKeyDown.add(function(ed, e) {
+			if (e.keyCode === BACKSPACE) {
+				if (ed.selection.isCollapsed() && ed.selection.getRng(true).startOffset === 0) {
+					var previousSibling = ed.selection.getNode().previousSibling;
+					if (previousSibling && previousSibling.nodeName && previousSibling.nodeName.toLowerCase() === "table") {
+						return tinymce.dom.Event.cancel(e);
+					}
+				}
+			}
+		})
+	}
+
 	tinymce.create('tinymce.util.Quirks', {
 		Quirks: function(ed) {
+			// All browsers
+			disableBackspaceIntoATable(ed);
+
 			// WebKit
 			if (tinymce.isWebKit) {
 				cleanupStylesWhenDeleting(ed);

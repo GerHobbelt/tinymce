@@ -1232,6 +1232,8 @@
 				t.iframeHTML += '<link type="text/css" rel="stylesheet" href="' + t.contentCSS[i] + '" />';
 			}
 
+			t.contentCSS = [];
+
 			bi = s.body_id || 'tinymce';
 			if (bi.indexOf('=') != -1) {
 				bi = t.getParam('body_id', '', 'hash');
@@ -1739,6 +1741,16 @@
 			t.load({initial : true, format : 'html'});
 			t.startContent = t.getContent({format : 'raw'});
 			t.undoManager.add();
+			/**
+			 * Is set to true after the editor instance has been initialized
+			 *
+			 * @property initialized
+			 * @type Boolean
+			 * @example
+			 * function isEditorInitialized(editor) {
+			 *     return editor && editor.initialized;
+			 * }
+			 */
 			t.initialized = true;
 
 			t.onInit.dispatch(t);
@@ -2254,9 +2266,9 @@
 			if (!/^(mceAddUndoLevel|mceEndUndoLevel|mceBeginUndoLevel|mceRepaint|SelectAll)$/.test(cmd) && (!a || !a.skip_focus))
 				t.focus();
 
-			o = {};
-			t.onBeforeExecCommand.dispatch(t, cmd, ui, val, o);
-			if (o.terminate)
+			a = extend({}, a);
+			t.onBeforeExecCommand.dispatch(t, cmd, ui, val, a);
+			if (a.terminate)
 				return false;
 
 			// Command callback
@@ -3183,7 +3195,8 @@
 					t.undoManager.add();
 				};
 
-				dom.bind(t.getDoc(), 'focusout', function(e) {
+				var focusLostFunc = tinymce.isGecko ? 'blur' : 'focusout';
+				dom.bind(t.getDoc(), focusLostFunc, function(e){
 					if (!t.removed && t.undoManager.typing)
 						addUndo();
 				});

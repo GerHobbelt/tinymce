@@ -1,8 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Firefox Quirks</title>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>All browser types Quirks</title>
 <link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-git.css" type="text/css" />
 <script src="http://code.jquery.com/qunit/qunit-git.js"></script>
 <script src="qunit/connector.js"></script>
@@ -17,6 +16,8 @@ var editor;
 QUnit.config.reorder = false;
 QUnit.config.autostart = false;
 
+var BACKSPACE = 0x08;
+
 module("Quirks Tests", {
 	autostart: false,
 	setup: function() {
@@ -24,23 +25,19 @@ module("Quirks Tests", {
 	}
 });
 
-if (tinymce.isGecko) {
-	asyncTest('hr', 1, function() {
-		editor.setContent('<p>one</p><hr /><p id="a">two</p>');
-		setSelection('#a', 0);
-		editor.focus();
-		robot.type(8, false, function() {
-			var expected = '<p>one</p><p id="a">two</p>';
-			var actual = editor.getContent({ format: 'raw' });
-			equal(actual, expected);
-			start();
-		}, editor.getBody());
-	});
-} else {
-	test('ignored', function() {
-		ok(true, "Tests ignored since the browser isn't Gecko.");
-	});
-}
+asyncTest('Backspace into <table> should be disabled', 1, function() {
+  	var testContent = '<table class="mceItemTable" border="1"><tbody><tr><th><p>Table heading</p></th></tr><tr><td><p>Table contents</p></td></tr></tbody></table><h2 id="a">Paragraph Heading</h2>';
+	editor.setContent(testContent);
+	var initialContent = editor.getContent();
+	setSelection('#a', 0);
+	editor.focus();
+	robot.type(BACKSPACE, false, function() {
+		var expected = initialContent;
+		var actual = editor.getContent();
+		equal(actual, expected);
+		start();
+	}, editor.getBody());
+});
 
 function initTinyFunction() {
 	tinyMCE.init({
@@ -54,7 +51,7 @@ function initTinyFunction() {
 </script>
 </head>
 <body>
-	<h1 id="qunit-header">Firefox Quirks</h1>
+	<h1 id="qunit-header">All browser types Quirks</h1>
 	<h2 id="qunit-banner"></h2>
 	<div id="qunit-testrunner-toolbar"></div>
 	<h2 id="qunit-userAgent"></h2>
