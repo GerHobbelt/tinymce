@@ -64,7 +64,7 @@
 			self.settings = settings = extend({
 				id : id,
 				language : 'en',
-				theme : 'simple',
+				theme : 'advanced',
 				skin : 'default',
 				delta_width : 0,
 				delta_height : 0,
@@ -222,8 +222,10 @@
 				DOM.insertAfter(DOM.create('input', {type : 'hidden', name : id}), id);
 
 			// Hide target element early to prevent content flashing
-			t.orgVisibility = t.getElement().style.visibility;
-			t.getElement().style.visibility = 'hidden';
+			if (!s.content_editable) {
+				t.orgVisibility = t.getElement().style.visibility;
+				t.getElement().style.visibility = 'hidden';
+			}
 
 			/**
 			 * Window manager reference, use this to open new windows and dialogs.
@@ -346,7 +348,7 @@
 		 * @method init
 		 */
 		init : function() {
-			var n, t = this, s = t.settings, w, h, e = t.getElement(), o, ti, u, bi, bc, re, i, initializedPlugins = [];
+			var n, t = this, s = t.settings, w, h, mh, e = t.getElement(), o, ti, u, bi, bc, re, i, initializedPlugins = [];
 
 			tinymce.add(t);
 
@@ -432,13 +434,14 @@
 				if (typeof s.theme != "function") {
 					w = s.width || e.style.width || e.offsetWidth;
 					h = s.height || e.style.height || e.offsetHeight;
+					mh = s.min_height || 100;
 					re = /^[0-9\.]+(|px)$/i;
 
 					if (re.test('' + w))
 						w = Math.max(parseInt(w, 10) + (o.deltaWidth || 0), 100);
 
 					if (re.test('' + h))
-						h = Math.max(parseInt(h, 10) + (o.deltaHeight || 0), 100);
+						h = Math.max(parseInt(h, 10) + (o.deltaHeight || 0), mh);
 
 					// Render UI
 					o = t.theme.renderUI({
@@ -456,8 +459,8 @@
 					});
 
 					h = (o.iframeHeight || h) + (typeof(h) == 'number' ? (o.deltaHeight || 0) : '');
-					if (h < 100)
-						h = 100;
+					if (h < mh)
+						h = mh;
 				} else {
 					o = s.theme(t, e);
 
@@ -473,6 +476,15 @@
 
 					// Use specified iframe height or the targets offsetHeight
 					h = o.iframeHeight || e.offsetHeight;
+
+					// Store away the selection when it's changed to it can be restored later with a editor.focus() call
+					if (isIE) {
+						t.onInit.add(function(ed) {
+							ed.dom.bind(ed.getBody(), 'beforedeactivate keydown', function() {
+								ed.lastIERng = ed.selection.getRng();
+							});
+						});
+					}
 				}
 
 				t.editorContainer = o.editorContainer;
@@ -722,7 +734,7 @@
 			 * // Selects the first paragraph found
 			 * tinyMCE.activeEditor.selection.select(tinyMCE.activeEditor.dom.select('p')[0]);
 			 */
-			self.selection = new tinymce.dom.Selection(self.dom, self.getWin(), self.serializer);
+			self.selection = new tinymce.dom.Selection(self.dom, self.getWin(), self.serializer, self);
 
 			/**
 			 * Formatter instance.
@@ -758,7 +770,7 @@
 
 			self.onPreInit.dispatch(self);
 
-			if (!settings.gecko_spellcheck)
+			if (!settings.browser_spellcheck && !settings.gecko_spellcheck)
 				doc.body.spellcheck = false;
 
 			if (!settings.readonly) {
@@ -851,6 +863,10 @@
 			var oed, self = this, selection = self.selection, contentEditable = self.settings.content_editable, ieRng, controlElm, doc = self.getDoc(), body;
 
 			if (!skip_focus) {
+				if (self.lastIERng) {
+					selection.setRng(self.lastIERng);
+				}
+
 				// Get selected control element
 				ieRng = selection.getRng();
 				if (ieRng.item) {
@@ -1556,7 +1572,10 @@
 			if (!args.no_events)
 				self.onSetContent.dispatch(self, args);
 
-			self.selection.normalize();
+			// Don't normalize selection if the focused element isn't the body in content editable mode since it will steal focus otherwise
+			if (!self.settings.content_editable || document.activeElement === self.getBody()) {
+				self.selection.normalize();
+			}
 
 			return args.content;
 		},
