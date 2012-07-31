@@ -27,7 +27,7 @@ function setSelection(startSelector, startOffset, endSelector, endOffset) {
 	var startContainer = findContainer(startSelector);
 	var endContainer = findContainer(endSelector);
 	var rng = editor.dom.createRng();
-	
+
 	function setRange(container, offset, start) {
 		if (offset === 'after') {
 			if (start) {
@@ -52,18 +52,19 @@ function setSelection(startSelector, startOffset, endSelector, endOffset) {
 }
 
 function initWhenTinyAndRobotAreReady() {
-	var readyCount = 0;
+	var tinyLoaded = false;
 	function checkLoaded() {
-		readyCount++;
-		if (readyCount > 2) {
-			ok(false, "Critical error: Received too many onload events.");
-		} else if (readyCount === 2) {
+		if (tinyLoaded && window.robot && window.robot.ready) {
 			QUnit.start();
 		}
 	}
 	window.robot.onload(checkLoaded);
 	tinymce.onAddEditor.add(function(tinymce, ed) {
+		if (tinyLoaded) {
+			return;
+		}
 		ed.onInit.add(function() {
+			tinyLoaded = true;
 			checkLoaded();
 		});
 	});

@@ -22,4 +22,6 @@ jscripts/tiny_mce/tiny_mce_jquery_src.js
 jscripts/tiny_mce/tiny_mce_prototype.js
 jscripts/tiny_mce/tiny_mce_prototype_src.js
 jscripts/tiny_mce/tiny_mce_src.js
+jscripts/tiny_mce/tiny_mce_popup.js
+jscripts/tiny_mce/tiny_mce_full.js
 build-utils

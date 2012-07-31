@@ -123,6 +123,7 @@ link_desc:"Insert/edit link"
 },
 xhtmlxtras:{
 cite_desc:"Citation",
+q_desc:"Quotation",
 abbr_desc:"Abbreviation",
 acronym_desc:"Acronym",
 del_desc:"Deletion",
@@ -197,10 +198,10 @@ wait:"Please wait...",
 sug:"Suggestions",
 no_sug:"No suggestions",
 no_mpell:"No misspellings found.",
-learn_word:"Learn word" 
+learn_word:"Learn word"
 },
 pagebreak:{
-desc:"Insert page break."
+desc:"Insert page break"
 },
 advlist:{
 types:"Types",

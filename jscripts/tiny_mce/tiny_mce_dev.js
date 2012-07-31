@@ -7,7 +7,7 @@
  * License: http://tinymce.moxiecode.com/license
  * Contributing: http://tinymce.moxiecode.com/contributing
  *
- * This file should only be used while developing TinyMCE 
+ * This file should only be used while developing TinyMCE
  * tiny_mce.js or tiny_mce_src.js should be used in a production environment.
  * This file loads the js files from classes instead of a merged copy.
  */
@@ -16,8 +16,8 @@
 	var i, nl = document.getElementsByTagName('script'), base, src, p, li, query = '', it, scripts = [];
 
 	if (window.tinyMCEPreInit) {
-		base = tinyMCEPreInit.base;
-		query = tinyMCEPreInit.query || '';
+		base = window.tinyMCEPreInit.base;
+		query = window.tinyMCEPreInit.query || '';
 	} else {
 		for (i=0; i<nl.length; i++) {
 			src = nl[i].src;
@@ -45,13 +45,48 @@
 		scripts.push(base + '/classes/' + u);
 	};
 
-	function load() {
-		var i, html = '';
+	/*
+	[i_a] everywhere where we use tinyMCE, we employ lazyload.js to do the loading in a controlled fashion for us.
 
-		for (i = 0; i < scripts.length; i++)
-			html += '<script type="text/javascript" src="' + scripts[i] + '"></script>\n';
+	However, keep the old load code in there as a fallback, for now...
+	*/
+	function load()
+	{
+		// Assuming the LazyLoad object to exist, we can pass it on to LazyLoad as the callback method to be used
+		//
+		// See also:
+		//    http://stackoverflow.com/questions/359788/javascript-function-name-as-a-string
 
-		document.write(html);
+		var fn = query.load_callback;
+		//alert('fn = ' + fn);
+		var context = window;
+		if (fn)
+		{
+			//var args = Array.prototype.slice.call(query.load_args).splice(2);
+			var args;
+			var namespaces = fn.split('.');
+			fn = namespaces.pop();
+			for(var i = 0; i < namespaces.length; i++)
+			{
+				context = context[namespaces[i]];
+			}
+		}
+		if (typeof LazyLoad != 'undefined')
+		{
+			LazyLoad.js(scripts, context[fn], null, null /* context */, true); // insert scripts into the load queue instead of appending them!
+		}
+		else
+		{
+			if (typeof console !== 'undefined' && console.log) console.log("You're not using LazyLoad to load tinyMCE! This usage is deprecated and strongly advised against!");
+
+			// old code doesn't support callback!
+			var i, html = '';
+
+			for (i = 0; i < scripts.length; i++)
+				html += '<script type="text/javascript" src="' + scripts[i] + '"></script>\n';
+
+			document.write(html);
+		}
 	};
 
 	// Firebug

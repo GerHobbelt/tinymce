@@ -54,14 +54,15 @@
 			visualaid : ['visualaid_desc', 'mceToggleVisualAid'],
 			anchor : ['anchor_desc', 'mceInsertAnchor'],
 			newdocument : ['newdocument_desc', 'mceNewDocument'],
-			blockquote : ['blockquote_desc', 'mceBlockQuote']
+			blockquote : ['blockquote_desc', 'mceBlockQuote'],
+			q : ['q_desc', 'mceQ']
 		},
 
-		stateControls : ['bold', 'italic', 'underline', 'strikethrough', 'bullist', 'numlist', 'justifyleft', 'justifycenter', 'justifyright', 'justifyfull', 'sub', 'sup', 'blockquote'],
+		stateControls : ['bold', 'italic', 'underline', 'strikethrough', 'bullist', 'numlist', 'justifyleft', 'justifycenter', 'justifyright', 'justifyfull', 'sub', 'sup', 'blockquote', 'q'],
 
 		init : function(ed, url) {
 			var t = this, s, v, o;
-	
+
 			t.editor = ed;
 			t.url = url;
 			t.onResolveName = new tinymce.util.Dispatcher(this);
@@ -162,6 +163,62 @@
 
 			if (s.skin_variant)
 				DOM.loadCSS(url + "/skins/" + ed.settings.skin + "/ui_" + s.skin_variant + ".css");
+
+			// [i_a] since we want display resize actions to have effect even when the user jiggled the
+			// resize draggable triangle some time before, we need to hook that window(!) event and
+			// have it nuke the fixed width/height and revert to the default state: allowing the
+			// browser engine to determine the layout of the editor.
+			var tbl = DOM.get(t.editor.id + '_tbl'), ifr = DOM.get(t.editor.id + '_ifr');
+			t.editor_origwidth_tbl = '';
+			t.editor_origheight_tbl = '';
+			t.editor_origwidth_ifr = '';
+			t.editor_origheight_ifr = '';
+			t.editor_origWH_collected = false;
+			t.resizeTimer = false;
+
+			t.windowResizeFunc = tinymce.dom.Event.add(DOM.win, 'resize', function() {
+				// as the resize event can fire extrmely rapidly, we delay a little before we actually go do some actual work
+				if (t.resizeTimer) {
+					clearTimeout(t.resizeTimer);
+				}
+				t.resizeTimer = setTimeout(function() {
+					var vp = tinymce.DOM.getViewPort(), outerSize, innerSize;
+					var ed = t.editor, e = DOM.get(ed.id + '_tbl'), ifr = DOM.get(ed.id + '_ifr');
+
+					// Get outer/inner size to get a delta size that can be used to calc the new iframe size
+					outerSize = ed.dom.getRect(ed.getContainer().firstChild);
+					innerSize = ed.dom.getRect(ed.getContainer().getElementsByTagName('iframe')[0]);
+
+					if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.windowResizeEvent(' + outerSize.w + ', ' + outerSize.h + ' @ ' + outerSize.x + ', ' + outerSize.y + ') inner (' + innerSize.w + ', ' + innerSize.h + ' @ ' + innerSize.x + ', ' + innerSize.y + ') viewport (' + vp.w + ', ' + vp.h + ' @ ' + vp.x + ', ' + vp.y + ')');
+
+					if (!t.editor_origWH_collected)
+					{
+						t.editor_origwidth_tbl = DOM.getStyle(e, 'width');
+						t.editor_origheight_tbl = DOM.getStyle(e, 'height');
+						t.editor_origwidth_ifr = DOM.getStyle(ifr, 'width');
+						t.editor_origheight_ifr = DOM.getStyle(ifr, 'height');
+						t.editor_origWH_collected = true;
+					}
+
+					// when the viewport is smaller than the editor width (in fact: clips off the right edge of the editor),
+					// it's pretty useless from a usability PoV; if the original widths were percentages, we dial those
+					// back in and let it run from there.
+					// But only resize the editor like that when the user hasn't scrolled right before.
+					//
+					// Nett effect: resize (shrink) the display sufficiently to cover the right edge of the editor and it
+					// will reset to the originally configured percentage width instead of a hardcoded pixel one (due to user resize/drag before)
+					if (vp.x == 0 && vp.w <= innerSize.x + innerSize.w && t.editor_origwidth_tbl.indexOf('%') > 0)
+					{
+						// Resize iframe and container: keep _tbl width at the original setting (percentage or other), same for height.
+						//DOM.setStyle(e, 'height', t.editor_origheight_tbl);
+						//DOM.setStyle(ifr, 'height', t.editor_origheight_ifr);
+
+						DOM.setStyle(e, 'width', t.editor_origwidth_tbl);
+						DOM.setStyle(ifr, 'width', '100%');
+					}
+				}, 100);
+			});
+
 		},
 
 		_isHighContrast : function() {
@@ -251,7 +308,7 @@
 					// Toggle off the current format
 					matches = ed.formatter.matchAll(formatNames);
 					if (!name || matches[0] == name) {
-						if (matches[0]) 
+						if (matches[0])
 							ed.formatter.remove(matches[0]);
 					} else
 						ed.formatter.apply(name);
@@ -420,6 +477,7 @@
 				h6 : 'advanced.h6',
 				div : 'advanced.div',
 				blockquote : 'advanced.blockquote',
+				q : 'advanced.quote',
 				code : 'advanced.code',
 				dt : 'advanced.dt',
 				dd : 'advanced.dd',
@@ -560,7 +618,7 @@
 			if (DOM.get(ed.id + '_path_row')) {
 				Event.add(ed.id + '_tbl', 'mouseover', function(e) {
 					var re;
-	
+
 					e = e.target;
 
 					if (e.nodeName == 'SPAN' && DOM.hasClass(e.parentNode, 'mceButton')) {
@@ -629,28 +687,41 @@
 		},
 
 		resizeTo : function(w, h, store) {
-			var ed = this.editor, s = this.settings, e = DOM.get(ed.id + '_tbl'), ifr = DOM.get(ed.id + '_ifr');
+			var t = this, ed = t.editor, s = t.settings, e = DOM.get(ed.id + '_tbl'), ifr = DOM.get(ed.id + '_ifr');
 
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - start');
 			// Boundery fix box
 			w = Math.max(s.theme_advanced_resizing_min_width || 100, w);
 			h = Math.max(s.theme_advanced_resizing_min_height || 100, h);
 			w = Math.min(s.theme_advanced_resizing_max_width || 0xFFFF, w);
 			h = Math.min(s.theme_advanced_resizing_max_height || 0xFFFF, h);
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after min/max');
+
+			if (!t.editor_origWH_collected)
+			{
+				t.editor_origwidth_tbl = DOM.getStyle(e, 'width');
+				t.editor_origheight_tbl = DOM.getStyle(e, 'height');
+				t.editor_origwidth_ifr = DOM.getStyle(ifr, 'width');
+				t.editor_origheight_ifr = DOM.getStyle(ifr, 'height');
+				t.editor_origWH_collected = true;
+			}
 
 			// Resize iframe and container
 			DOM.setStyle(e, 'height', '');
 			DOM.setStyle(ifr, 'height', h);
 
 			if (s.theme_advanced_resize_horizontal) {
-				DOM.setStyle(e, 'width', '');
+				DOM.setStyle(e, 'width', w);   // set the editor width to the width of the iframe: when the toolbars, etc. are to wide, the clientWidth number will exhibit this and we can recover the correct width from there
 				DOM.setStyle(ifr, 'width', w);
 
 				// Make sure that the size is never smaller than the over all ui
 				if (w < e.clientWidth) {
 					w = e.clientWidth;
+					DOM.setStyle(e, 'width', e.clientWidth);
 					DOM.setStyle(ifr, 'width', e.clientWidth);
 				}
 			}
+			if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeTo(' + w + ', ' + h + ') - after clientW (' + e.clientWidth + ', ' + e.clientHeight + ')');
 
 			// Store away the size
 			if (store && s.theme_advanced_resizing_use_cookie) {
@@ -858,7 +929,7 @@
 			var n, t = this, ed = t.editor, s = t.settings, r, mf, me, td;
 
 			n = DOM.add(tb, 'tr');
-			n = td = DOM.add(n, 'td', {'class' : 'mceStatusbar'}); 
+			n = td = DOM.add(n, 'td', {'class' : 'mceStatusbar'});
 			n = DOM.add(n, 'div', {id : ed.id + '_path_row', 'role': 'group', 'aria-labelledby': ed.id + '_path_voice'});
 			if (s.theme_advanced_path) {
 				DOM.add(n, 'span', {id: ed.id + '_path_voice'}, ed.translate('advanced.path'));
@@ -866,7 +937,7 @@
 			} else {
 				DOM.add(n, 'span', {}, '&#160;');
 			}
-			
+
 
 			if (s.theme_advanced_resizing) {
 				DOM.add(td, 'a', {id : ed.id + '_resize', href : 'javascript:;', onclick : "return false;", 'class' : 'mceResize'});
@@ -875,6 +946,7 @@
 					ed.onPostRender.add(function() {
 						var o = Cookie.getHash("TinyMCE_" + ed.id + "_size"), c = DOM.get(ed.id + '_tbl');
 
+						if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.onPostRender(cookie = ' + (1 * !!o) + ', first = ' + (1 * !s.theme_advanced_has_resized) + ')');
 						if (!o)
 							return;
 
@@ -898,6 +970,7 @@
 							width = startWidth + (e.screenX - startX);
 							height = startHeight + (e.screenY - startY);
 
+							if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.resizeOnMove(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
 							t.resizeTo(width, height);
 						};
 
@@ -910,6 +983,7 @@
 
 							width = startWidth + (e.screenX - startX);
 							height = startHeight + (e.screenY - startY);
+							if (typeof console !== 'undefined' && console.log) console.log('TinyMCE.endResizeOn(' + width + ', ' + height + ') - client (' + e.clientWidth + ', ' + e.clientHeight + ', ' + e.screenX + ', ' + e.screenY + ', ' + startX + ', ' + startY + ')');
 							t.resizeTo(width, height, true);
 						};
 
@@ -1021,7 +1095,7 @@
 
 					if (!fn && n.style.fontFamily)
 						fn = n.style.fontFamily.replace(/[\"\']+/g, '').replace(/^([^,]+).*/, '$1').toLowerCase();
-					
+
 					if (!fc && n.style.color)
 						fc = n.style.color;
 
@@ -1052,7 +1126,7 @@
 						return true;
 				});
 			}
-			
+
 			if (s.theme_advanced_show_current_color) {
 				function updateColor(controlId, color) {
 					if (c = cm.get(controlId)) {

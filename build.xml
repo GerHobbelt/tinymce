@@ -162,6 +162,12 @@
 		<yuicompress infile="${build_dir}/themes/simple/editor_template_src.js" outfile="${build_dir}/themes/simple/editor_template.js" />
 		<yuicompress infile="${build_dir}/themes/advanced/editor_template_src.js" outfile="${build_dir}/themes/advanced/editor_template.js" />
 
+
+		<!-- spellchecker plugin: replace backend with php -->
+		<replaceregexp match="\&quot;\{backend\}\&quot;" replace="this.url+'/rpc.php'" byline="true">
+			<fileset dir="${build_dir}/plugins/spellchecker/" includes="*/editor_plugin_src.js" />
+		</replaceregexp>
+
 		<!-- Compress plugins -->
 		<for param="file">
 			<path>
@@ -204,6 +210,7 @@
 				<exclude name="**/.*/**"/>
 				<exclude name="**/.*"/>
 				<exclude name="build-utils/**" />
+				<exclude name="ephox-changelog.txt" />
 			</fileset>
 		</copy>
 	</target>
@@ -215,9 +222,20 @@
 		<propertyregex property="release_date" input="${changelog}" regexp="^Version [^\(]+\(([^\)]+)\)" select="\1" />
 		<propertyregex property="version.major" input="${version}" regexp="^([0-9]+)\." select="\1" />
 		<propertyregex property="version.minor.upstream" input="${version}" regexp="^[^\.]+.([0-9xabrc.]+)" select="\1" />
-		<property name="version.minor" value="${version.minor.upstream}" />
+		<property name="version.minor" value="${version.minor.upstream}-${build-number}" />
 		<property name="file_version" value="${version}-${build-number}" />
 
+		<tstamp>
+			<format property="now" pattern="yyyy-MM-dd" timezone="GMT" />
+		</tstamp>
+		<concat destfile="${temp_dir}/tinymce/changelog.txt" eol="dos" fixlastline="true">
+			<header>Version ${file_version} (${now})&#13;&#10;	Ephox distribution of TinyMCE ${version}.</header>
+			<filelist>
+				<file name="${basedir}/ephox-changelog.txt" />
+				<file name="${basedir}/changelog.txt" />
+			</filelist>
+		</concat>
+		
 		<!-- Replace major version -->
 		<replaceregexp byline="true">
 			<regexp pattern="@@tinymce_major_version@@" />
@@ -317,6 +335,7 @@
 				<include name="tinymce/examples/**" />
 				<include name="tinymce/changelog.txt" />
 				<!-- TODO consider if the license needs to be changed?-->
+				<exclude name="tinymce/LICENSE.TXT" />
 				<exclude name="tinymce/examples/full_jquery.html" />
 				<exclude name="tinymce/jscripts/tiny_mce/classes/**" />
 				<exclude name="tinymce/jscripts/tiny_mce/jquery.tinymce.js" />
@@ -326,6 +345,9 @@
 				<exclude name="tinymce/jscripts/tiny_mce/tiny_mce_prototype.js" />
 				<exclude name="tinymce/jscripts/tiny_mce/tiny_mce_prototype_src.js" />
 			</fileset>
+			<zipfileset dir="${temp_dir}/tinymce/jscripts/tiny_mce" prefix="tinymce">
+				<include name="LICENSE.txt" />
+			</zipfileset>
 		</zip>
 	</target>
 

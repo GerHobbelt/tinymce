@@ -23,20 +23,20 @@
 	 * @example
 	 * // Add a class to all paragraphs in the editor.
 	 * tinyMCE.activeEditor.dom.addClass(tinyMCE.activeEditor.dom.select('p'), 'someclass');
-	 * 
+	 *
 	 * // Gets the current editors selection as text
 	 * tinyMCE.activeEditor.selection.getContent({format : 'text'});
-	 * 
+	 *
 	 * // Creates a new editor instance
 	 * var ed = new tinymce.Editor('textareaid', {
 	 *     some_setting : 1
 	 * });
-	 * 
+	 *
 	 * // Select each item the user clicks on
 	 * ed.onClick.add(function(ed, e) {
 	 *     ed.selection.select(e.target);
 	 * });
-	 * 
+	 *
 	 * ed.render();
 	 */
 	tinymce.create('tinymce.Editor', {
@@ -53,7 +53,7 @@
 			var t = this;
 
 			/**
-			 * Editor instance id, normally the same as the div/textarea that was replaced. 
+			 * Editor instance id, normally the same as the div/textarea that was replaced.
 			 *
 			 * @property id
 			 * @type String
@@ -65,7 +65,7 @@
 			t.queryValueCommands = {};
 
 			/**
-			 * State to force the editor to return false on a isDirty call. 
+			 * State to force the editor to return false on a isDirty call.
 			 *
 			 * @property isNotDirty
 			 * @type Boolean
@@ -833,7 +833,7 @@
 			 * @example
 			 * // Get relative URL from the location of document_base_url
 			 * tinyMCE.activeEditor.documentBaseURI.toRelative('/somedir/somefile.htm');
-			 * 
+			 *
 			 * // Get absolute URL from the location of document_base_url
 			 * tinyMCE.activeEditor.documentBaseURI.toAbsolute('somefile.htm');
 			 */
@@ -849,7 +849,7 @@
 			 * @example
 			 * // Get relative URL from the location of the API
 			 * tinyMCE.activeEditor.baseURI.toRelative('/somedir/somefile.htm');
-			 * 
+			 *
 			 * // Get absolute URL from the location of the API
 			 * tinyMCE.activeEditor.baseURI.toAbsolute('somefile.htm');
 			 */
@@ -860,7 +860,7 @@
 			 *
 			 * @property contentCSS
 			 * @type Array
-			 */			
+			 */
 			t.contentCSS = [];
 
 			// Call setup
@@ -876,6 +876,7 @@
 			var t = this, s = t.settings, id = t.id, sl = tinymce.ScriptLoader;
 
 			// Page is not loaded yet, wait for it
+			if (typeof console !== 'undefined' && console.log) console.log('tinymce.render() domloaded: ' + (1*Event.domLoaded));
 			if (!Event.domLoaded) {
 				Event.add(document, 'init', function() {
 					t.render();
@@ -907,7 +908,7 @@
 			 * @example
 			 * // Shows an alert message
 			 * tinyMCE.activeEditor.windowManager.alert('Hello world!');
-			 * 
+			 *
 			 * // Opens a new dialog with the file.htm file and the size 320x240
 			 * // It also adds a custom parameter this can be retrieved by using tinyMCEPopup.getWindowArg inside the dialog.
 			 * tinyMCE.activeEditor.windowManager.open({
@@ -992,7 +993,7 @@
 					}
 				});
 
-				// Init when que is loaded
+				// Init when queue is loaded      [i_a]
 				sl.loadQueue(function() {
 					if (!t.removed)
 						t.init();
@@ -1017,7 +1018,7 @@
 			s.aria_label = s.aria_label || DOM.getAttrib(e, 'aria-label', t.getLang('aria.rich_text_area'));
 
 			/**
-			 * Reference to the theme instance that was used to generate the UI. 
+			 * Reference to the theme instance that was used to generate the UI.
 			 *
 			 * @property theme
 			 * @type tinymce.Theme
@@ -1060,7 +1061,7 @@
 				s.popup_css += ',' + t.documentBaseURI.toAbsolute(s.popup_css_add);
 
 			/**
-			 * Control manager instance for the editor. Will enables you to create new UI elements and change their states etc.
+			 * Control manager instance for the editor. Will enable you to create new UI elements and change their states etc.
 			 *
 			 * @property controlManager
 			 * @type tinymce.ControlManager
@@ -1199,15 +1200,15 @@
 			// Domain relaxing enabled, then set document domain
 			if (tinymce.relaxedDomain && (isIE || (tinymce.isOpera && parseFloat(opera.version()) < 11))) {
 				// We need to write the contents here in IE since multiple writes messes up refresh button and back button
-				u = 'javascript:(function(){document.open();document.domain="' + document.domain + '";var ed = window.parent.tinyMCE.get("' + t.id + '");document.write(ed.iframeHTML);document.close();ed.setupIframe();})()';				
+				u = 'javascript:(function(){document.open();document.domain="' + document.domain + '";var ed = window.parent.tinyMCE.get("' + t.id + '");document.write(ed.iframeHTML);document.close();ed.setupIframe();})()';
 			}
 
 			// Create iframe
 			// TODO: ACC add the appropriate description on this.
-			n = DOM.add(o.iframeContainer, 'iframe', { 
+			n = DOM.add(o.iframeContainer, 'iframe', {
 				id : t.id + "_ifr",
 				src : u || 'javascript:""', // Workaround for HTTPS warning in IE6/7
-				frameBorder : '0', 
+				frameBorder : '0',
 				title : s.aria_label,
 				style : {
 					width : '100%',
@@ -1475,7 +1476,7 @@
 			t.formatter.register(t.settings.formats);
 
 			/**
-			 * Undo manager instance, responsible for handling undo levels. 
+			 * Undo manager instance, responsible for handling undo levels.
 			 *
 			 * @property undoManager
 			 * @type tinymce.UndoManager
@@ -1625,7 +1626,7 @@
 					if (o.set)
 						o.content = t.execCallback('cleanup_callback', 'insert_to_editor', o.content, o);
 
-					if (o.get)						
+					if (o.get)
 						o.content = t.execCallback('cleanup_callback', 'get_from_editor', o.content, o);
 				});
 			}
@@ -1720,7 +1721,7 @@
 					}, 100);
 				}
 			}, 1);
-	
+
 			e = null;
 		},
 
@@ -1953,7 +1954,7 @@
 		 * @example
 		 * // Returns a specific config value from the currently active editor
 		 * var someval = tinyMCE.activeEditor.getParam('myvalue');
-		 * 
+		 *
 		 * // Returns a specific config value from a specific editor instance by id
 		 * var someval2 = tinyMCE.get('my_editor').getParam('myvalue');
 		 */
@@ -2028,9 +2029,9 @@
 		 * // an alert box with the selected contents as plain text.
 		 * tinyMCE.init({
 		 *    ...
-		 * 
+		 *
 		 *    theme_advanced_buttons1 : 'example,..'
-		 * 
+		 *
 		 *    setup : function(ed) {
 		 *       // Register example button
 		 *       ed.addButton('example', {
@@ -2062,7 +2063,7 @@
 		 * // Adds a custom command that later can be executed using execCommand
 		 * tinyMCE.init({
 		 *    ...
-		 * 
+		 *
 		 *    setup : function(ed) {
 		 *       // Register example command
 		 *       ed.addCommand('mycommand', function(ui, v) {
@@ -2380,10 +2381,10 @@
 		 * @example
 		 * // Show progress for the active editor
 		 * tinyMCE.activeEditor.setProgressState(true);
-		 * 
+		 *
 		 * // Hide progress for the active editor
 		 * tinyMCE.activeEditor.setProgressState(false);
-		 * 
+		 *
 		 * // Show progress after 3 seconds
 		 * tinyMCE.activeEditor.setProgressState(true, 3000);
 		 */
@@ -2485,13 +2486,13 @@
 		 * @example
 		 * // Sets the HTML contents of the activeEditor editor
 		 * tinyMCE.activeEditor.setContent('<span>some</span> html');
-		 * 
+		 *
 		 * // Sets the raw contents of the activeEditor editor
 		 * tinyMCE.activeEditor.setContent('<span>some</span> html', {format : 'raw'});
-		 * 
+		 *
 		 * // Sets the content of a specific editor (my_editor in this example)
 		 * tinyMCE.get('my_editor').setContent(data);
-		 * 
+		 *
 		 * // Sets the bbcode contents of the activeEditor editor if the bbcode plugin was added
 		 * tinyMCE.activeEditor.setContent('[b]some[/b] html', {format : 'bbcode'});
 		 */
@@ -2545,10 +2546,10 @@
 		 * @example
 		 * // Get the HTML contents of the currently active editor
 		 * console.debug(tinyMCE.activeEditor.getContent());
-		 * 
+		 *
 		 * // Get the raw contents of the currently active editor
 		 * tinyMCE.activeEditor.getContent({format : 'raw'});
-		 * 
+		 *
 		 * // Get content of a specific editor:
 		 * tinyMCE.get('content id').getContent()
 		 */
@@ -2645,6 +2646,14 @@
 
 				if (e)
 					t.contentWindow = e.contentWindow;
+				// [i_a] on very odd occasions a JS crash happens in FF3 due to getDoc not getting a window from this one, or some other screwup
+				//
+				// HINT: this happens after toggling the fullscreen mode: seems this failure occurs when the editor is BACK TO NORMAL after
+				//       a fullscreen, however the ID pointed at is still mce_fullscreen instead of, for example, 'editor' or 'content' (the textarea ID)
+				//       and since this fullscreen ID is long gone, everything is DIW.
+				if (!t.contentWindow) {
+					//debugger; // comment out before compressing with yui tools: that one crashes on 'reserved word'.
+				}
 			}
 
 			return t.contentWindow;
@@ -2662,8 +2671,13 @@
 			if (!t.contentDocument) {
 				w = t.getWin();
 
-				if (w)
+				if (w) {
 					t.contentDocument = w.document;
+				}
+				// [i_a] on very odd occasions a JS crash happens in FF3 due to this function returning 'null' -- while it shouldn't...
+				if (!t.contentDocument) {
+					//debugger; // comment out before compressing with yui tools: that one crashes on 'reserved word'.
+				}
 			}
 
 			return t.contentDocument;
@@ -3232,7 +3246,7 @@
 						addUndo();
 				});
 			}
-			
+
 			// Bug fix for FireFox keeping styles from end of selection instead of start.
 			if (tinymce.isGecko) {
 				function getAttributeApplyFunction() {

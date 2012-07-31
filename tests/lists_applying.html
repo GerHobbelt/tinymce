@@ -12,7 +12,7 @@
 <script type="text/javascript" src="js/lists/actions.js"></script>
 <script>
 // Expected Results
-var EmptyOLConvertedToP = '<ol><li>Before</li></ol>\n<p>&nbsp;</p>\n<ol><li>After</li></ol>';
+var EmptyOLConvertedToP = '<ol>\n<li>Before</li>\n</ol>\n<p>&nbsp;</p>\n<ol>\n<li>After</li>\n</ol>';
 var EmptyULConvertedToP = '<ul>\n<li>Before</li>\n</ul>\n<p>&nbsp;</p>\n<ul>\n<li>After</li>\n</ul>';
 var NonEmptyOLConvertedToP = '<ol>\n<li>Before</li>\n</ol>\n<p>Test</p>\n<ol>\n<li>After</li>\n</ol>';
 var NonEmptyULConvertedToP = '<ul>\n<li>Before</li>\n</ul>\n<p>Test</p>\n<ul>\n<li>After</li>\n</ul>';
@@ -162,15 +162,15 @@ asyncTest('Collapsed Selection - Apply UL in Divs', function() {
 });
 
 asyncTest('Collapsed Selection - Type Enter', function() {
-	TypingEnter.inA(EmptyOrderedListItem).gives('<ol>\n<li>Before</li>\n<li></li>\n<li>&nbsp;</li>\n<li>After</li>\n</ol>');
-	TypingEnter.inA(EmptyUnorderedListItem).gives('<ul>\n<li>Before</li>\n<li></li>\n<li>&nbsp;</li>\n<li>After</li>\n</ul>');
-	TypingEnter.inA(NonEmptyOrderedListItem).gives('<ol>\n<li>Before</li>\n<li></li>\n<li>Test</li>\n<li>After</li>\n</ol>');
-	TypingEnter.inA(NonEmptyUnorderedListItem).gives('<ul>\n<li>Before</li>\n<li></li>\n<li>Test</li>\n<li>After</li>\n</ul>');
+	TypingEnter.inA(EmptyOrderedListItem).gives('<ol>\n<li>Before</li>\n<li>&nbsp;</li>\n<li>&nbsp;</li>\n<li>After</li>\n</ol>');
+	TypingEnter.inA(EmptyUnorderedListItem).gives('<ul>\n<li>Before</li>\n<li>&nbsp;</li>\n<li>&nbsp;</li>\n<li>After</li>\n</ul>');
+	TypingEnter.inA(NonEmptyOrderedListItem).gives('<ol>\n<li>Before</li>\n<li>&nbsp;</li>\n<li>Test</li>\n<li>After</li>\n</ol>');
+	TypingEnter.inA(NonEmptyUnorderedListItem).gives('<ul>\n<li>Before</li>\n<li>&nbsp;</li>\n<li>Test</li>\n<li>After</li>\n</ul>');
 	
-	TypingEnter.inA(NestedEmptyOrderedListItem).gives('<ol>\n<li>Before<ol>\n<li></li>\n<li>&nbsp;</li>\n</ol></li>\n<li>After</li>\n</ol>');
-	TypingEnter.inA(NestedEmptyUnorderedListItem).gives('<ul>\n<li>Before<ul>\n<li></li>\n<li>&nbsp;</li>\n</ul></li>\n<li>After</li>\n</ul>');
-	TypingEnter.inA(NestedNonEmptyOrderedListItem).gives('<ol>\n<li>Before<ol>\n<li></li>\n<li>Test</li>\n</ol></li>\n<li>After</li>\n</ol>');
-	TypingEnter.inA(NestedNonEmptyUnorderedListItem).gives('<ul>\n<li>Before<ul>\n<li></li>\n<li>Test</li>\n</ul></li>\n<li>After</li>\n</ul>');
+	TypingEnter.inA(NestedEmptyOrderedListItem).gives('<ol>\n<li>Before<ol>\n<li>&nbsp;</li>\n<li>&nbsp;</li>\n</ol></li>\n<li>After</li>\n</ol>');
+	TypingEnter.inA(NestedEmptyUnorderedListItem).gives('<ul>\n<li>Before<ul>\n<li>&nbsp;</li>\n<li>&nbsp;</li>\n</ul></li>\n<li>After</li>\n</ul>');
+	TypingEnter.inA(NestedNonEmptyOrderedListItem).gives('<ol>\n<li>Before<ol>\n<li>&nbsp;</li>\n<li>Test</li>\n</ol></li>\n<li>After</li>\n</ol>');
+	TypingEnter.inA(NestedNonEmptyUnorderedListItem).gives('<ul>\n<li>Before<ul>\n<li>&nbsp;</li>\n<li>Test</li>\n</ul></li>\n<li>After</li>\n</ul>');
 
 	// TODO: Typing enter in correctly nested lists
 	queue.done();

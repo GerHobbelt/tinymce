@@ -86,8 +86,16 @@
 
 				// Add undo level if needed
 				lastLevel = data[index];
-				if (lastLevel && lastLevel.content == level.content)
-					return null;
+				if (lastLevel) {
+					// Update bookmark on initial level
+					if (index === 0)
+						lastLevel.bookmark = editor.selection.getBookmark(2, true);
+
+					if (lastLevel.content == level.content) {
+						if (index > 0 || data.length == 1)
+							return null;
+					}
+				}
 
 				// Time to compress
 				if (settings.custom_undo_redo_levels) {
@@ -134,7 +142,7 @@
 					level = data[--index];
 
 					editor.setContent(level.content, {format : 'raw'});
-					editor.selection.moveToBookmark(level.beforeBookmark);
+					editor.selection.moveToBookmark(level.bookmark);
 
 					self.onUndo.dispatch(self, level);
 				}
@@ -181,7 +189,7 @@
 			 * @return {Boolean} true/false if the undo manager has any undo levels.
 			 */
 			hasUndo : function() {
-				return index > 0 || this.typing;
+				return index > 0 || self.typing;
 			},
 
 			/**
@@ -191,7 +199,7 @@
 			 * @return {Boolean} true/false if the undo manager has any redo levels.
 			 */
 			hasRedo : function() {
-				return index < data.length - 1 && !this.typing;
+				return index < data.length - 1 && !self.typing;
 			}
 		};
 	};

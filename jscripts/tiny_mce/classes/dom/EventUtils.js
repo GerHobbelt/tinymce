@@ -104,6 +104,7 @@
 			}
 
 			if (n == 'init') {
+				if (typeof console !== 'undefined' && console.log) console.log('tinymce.dom.EventUtils.add("init") domloaded: ' + (1*t.domLoaded));
 				if (t.domLoaded)
 					cb();
 				else
@@ -139,7 +140,7 @@
 		 * var func = tinymce.dom.Event.add(document, 'click', function(e) {
 		 *    console.debug(e.target);
 		 * });
-		 * 
+		 *
 		 * // Removes the click handler from the document
 		 * tinymce.dom.Event.remove(document, 'click', func);
 		 */
@@ -294,6 +295,7 @@
 			var t = this;
 
 			// Keep it from running more than once
+			if (typeof console !== 'undefined' && console.log) console.log('tinymce.dom.EventUtils._pageInit() domloaded: ' + (1*t.domLoaded));
 			if (t.domLoaded)
 				return;
 
@@ -315,6 +317,7 @@
 				return;
 			}
 
+			if (typeof console !== 'undefined' && console.log) console.log('tinymce.dom.EventUtils._wait() registering onreadystatechange / DOMContentLoaded: ' + (1*t.domLoaded));
 			// Use IE method
 			if (doc.attachEvent) {
 				doc.attachEvent("onreadystatechange", function() {
@@ -326,6 +329,7 @@
 
 				if (doc.documentElement.doScroll && win == win.top) {
 					(function() {
+						if (typeof console !== 'undefined' && console.log) console.log('tinymce.dom.EventUtils._wait(win = top) domloaded: ' + (1*t.domLoaded));
 						if (t.domLoaded)
 							return;
 

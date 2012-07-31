@@ -11,7 +11,7 @@
 (function() {
 	/**
 	 * Auto Resize
-	 * 
+	 *
 	 * This plugin automatically resizes the content area to fit its content height.
 	 * It will retain a minimum height, which is the height of the content area when
 	 * it's initialized.
@@ -36,6 +36,7 @@
 			 */
 			function resize() {
 				var d = ed.getDoc(), b = d.body, de = d.documentElement, DOM = tinymce.DOM, resizeHeight = t.autoresize_min_height, myHeight;
+				var maxHeight = ed.getParam('autoresize_max_height', 0);
 
 				// Get height differently depending on the browser used
 				myHeight = tinymce.isIE ? b.scrollHeight : de.offsetHeight;
@@ -43,6 +44,10 @@
 				// Don't make it smaller than the minimum height
 				if (myHeight > t.autoresize_min_height)
 					resizeHeight = myHeight;
+				// don't allow the editor to be larger than the specified maximum height, if any
+				if (maxHeight >= t.autoresize_min_height && resizeHeight > maxHeight)
+					resizeHeight = maxHeight;
+				//if (typeof console !== 'undefined' && console.log) console.log('heights: ' + t.autoresize_min_height + ', ' + maxHeight + ', ' + myHeight + ', ' + resizeHeight);
 
 				// Resize content element
 				DOM.setStyle(DOM.get(ed.id + '_ifr'), 'height', resizeHeight + 'px');
@@ -66,6 +71,8 @@
 			ed.onKeyUp.add(resize);
 			ed.onPostRender.add(resize);
 
+			//alert('autoresize init cfg: ' + (1*ed.getParam('autoresize_on_init', true)));
+
 			if (ed.getParam('autoresize_on_init', true)) {
 				// Things to do when the editor is ready
 				ed.onInit.add(function(ed, l) {
@@ -73,8 +80,8 @@
 					ed.setProgressState(true);
 					t.throbbing = true;
 
-					// Hide scrollbars
-					ed.getBody().style.overflowY = "hidden";
+					// Hide scrollbars, when applicable (resizing is possibly limited to a certain maximum height)
+					ed.getBody().style.overflowY = "auto";
 				});
 
 				ed.onLoadContent.add(function(ed, l) {
@@ -93,7 +100,7 @@
 				});
 			}
 
-			// Register the command so that it can be invoked by using tinyMCE.activeEditor.execCommand('mceExample');
+			// Register the command so that it can be invoked by using tinyMCE.activeEditor.execCommand('mceAutoResize');
 			ed.addCommand('mceAutoResize', resize);
 		},
 
