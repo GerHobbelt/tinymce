@@ -523,6 +523,12 @@
 						// Obtain selection node before selection is unselected by applyRngStyle()
 						var curSelNode = ed.selection.getNode();
 
+						// If the formats have a default block and we can't find a parent block then start wrapping it with a DIV this is for forced_root_blocks: false
+						// It's kind of a hack but people should be using the default block type P since all desktop editors work that way
+						if (!forcedRootBlock && formatList[0].defaultBlock && !dom.getParent(curSelNode, dom.isBlock)) {
+							apply(formatList[0].defaultBlock);
+						}
+
 						// Apply formatting to selection
 						ed.selection.setRng(adjustSelectionToVisibleSelection());
 						bookmark = selection.getBookmark();
@@ -742,10 +748,13 @@
 			} else
 				performCaretAction('remove', name, vars);
 
+			// Removed this logic since it breaks unit tests and produces empty caret elements since they will be destroyed in the cleanup process
+			// Also there must be a better way to rerender a table and I couldn't reproduce the case causing this might be some old WebKit
+			/*
 			// When you remove formatting from a table cell in WebKit (cell, not the contents of a cell) there is a rendering issue with column width
 			if (tinymce.isWebKit) {
 				ed.execCommand('mceCleanup');
-			}
+			}*/
 		};
 
 		/**
@@ -2031,7 +2040,8 @@
 					walker, node, nodes, tmpNode;
 
 			// Convert text node into index if possible
-			if (container.nodeType == 3 && offset >= container.nodeValue.length - 1) {
+			if (container.nodeType == 3 && offset >= container.nodeValue.length) {
+				// Get the parent container location and walk from there
 				container = container.parentNode;
 				offset = nodeIndex(container) + 1;
 			}
@@ -2040,7 +2050,7 @@
 			if (container.nodeType == 1) {
 				nodes = container.childNodes;
 				container = nodes[Math.min(offset, nodes.length - 1)];
-				walker = new TreeWalker(container);
+				walker = new TreeWalker(container, dom.getParent(container, dom.isBlock));
 
 				// If offset is at end of the parent node walk to the next one
 				if (offset > nodes.length - 1)
@@ -2063,6 +2073,5 @@
 				}
 			}
 		};
-
 	};
 })(tinymce);

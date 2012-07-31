@@ -2,6 +2,17 @@
 	var VK = tinymce.VK, BACKSPACE = VK.BACKSPACE, DELETE = VK.DELETE;
 
 	/**
+	 * Executes a command with a specific state this can be to enable/disable browser editing features.
+	 */
+	function setEditorCommandState(editor, cmd, state) {
+		try {
+			editor.getDoc().execCommand(cmd, false, state);
+		} catch (ex) {
+			// Ignore
+		}
+	}
+
+	/**
 	 * Fixes a WebKit bug when deleting contents using backspace or delete key.
 	 * WebKit will produce a span element if you delete across two block elements.
 	 *
@@ -306,7 +317,6 @@
 	 * Backspacing into a table behaves differently depending upon browser type.
 	 * Therefore, disable Backspace when cursor immediately follows a table.
 	 */
-
 	function disableBackspaceIntoATable(ed) {
 		ed.onKeyDown.add(function(ed, e) {
 			if (e.keyCode === BACKSPACE) {
@@ -318,6 +328,61 @@
 				}
 			}
 		})
+	}
+
+	/**
+	 * Old IE versions can't properly render BR elements in PRE tags white in contentEditable mode. So this logic adds a \n before the BR so that it will get rendered.
+	 */
+	function addNewLinesBeforeBrInPre(editor) {
+		var documentMode = editor.getDoc().documentMode;
+
+		// IE8+ rendering mode does the right thing with BR in PRE
+		if (documentMode && documentMode > 7) {
+			return;
+		}
+
+		 // Enable display: none in area and add a specific class that hides all BR elements in PRE to
+		 // avoid the caret from getting stuck at the BR elements while pressing the right arrow key
+		setEditorCommandState(editor, 'RespectVisibilityInDesign', true);
+		editor.dom.addClass(editor.getBody(), 'mceHideBrInPre');
+
+		// Adds a \n before all BR elements in PRE to get them visual
+		editor.parser.addNodeFilter('pre', function(nodes, name) {
+			var i = nodes.length, brNodes, j, brElm, sibling;
+
+			while (i--) {
+				brNodes = nodes[i].getAll('br');
+				j = brNodes.length;
+				while (j--) {
+					brElm = brNodes[j];
+
+					// Add \n before BR in PRE elements on older IE:s so the new lines get rendered
+					sibling = brElm.prev;
+					if (sibling && sibling.type === 3 && sibling.value.charAt(sibling.value - 1) != '\n') {
+						sibling.value += '\n';
+					} else {
+						brElm.parent.insert(new tinymce.html.Node('#text', 3), brElm, true).value = '\n';
+					}
+				}
+			}
+		});
+
+		// Removes any \n before BR elements in PRE since other browsers and in contentEditable=false mode they will be visible
+		editor.serializer.addNodeFilter('pre', function(nodes, name) {
+			var i = nodes.length, brNodes, j, brElm, sibling;
+
+			while (i--) {
+				brNodes = nodes[i].getAll('br');
+				j = brNodes.length;
+				while (j--) {
+					brElm = brNodes[j];
+					sibling = brElm.prev;
+					if (sibling && sibling.type == 3) {
+						sibling.value = sibling.value.replace(/\r?\n$/, '');
+					}
+				}
+			}
+		});
 	}
 
 	tinymce.create('tinymce.util.Quirks', {
@@ -344,6 +409,7 @@
 				emptyEditorWhenDeleting(ed);
 				ensureBodyHasRoleApplication(ed);
 				//removeStylesOnPTagsInheritedFromHeadingTag(ed)
+				addNewLinesBeforeBrInPre(ed);
 			}
 
 			// Gecko
